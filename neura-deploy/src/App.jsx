@@ -243,7 +243,7 @@ function Sidebar({onNew,projects=[],onOpen,onSignOut,session}) {
     </div>
   );
 
-  if(view==="memory")return(
+  if(view==="codex")return(<div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:"1px solid rgba(0,229,255,.1)",zIndex:20}}><SBHeader label="Codex"/><div style={{padding:14,display:"flex",flexDirection:"column",gap:10}}><div style={{padding:14,borderRadius:10,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.18)",color:"#E8EEF8",fontFamily:"DM Sans",fontSize:13}}>? CODEX<br/><span style={{color:"#6a7090",fontSize:11}}>Automatizaciones, conectores y ejecución operativa.</span></div><button style={{padding:12,borderRadius:9,background:"rgba(255,255,255,.04)",color:"#00E5FF",border:"1px solid rgba(0,229,255,.15)",fontSize:12}}>Crear automatización</button><button style={{padding:12,borderRadius:9,background:"rgba(255,255,255,.04)",color:"#B8C2E8",border:"1px solid rgba(255,255,255,.07)",fontSize:12}}>Conectores: Gmail · Slack · Drive</button><button style={{padding:12,borderRadius:9,background:"rgba(255,255,255,.04)",color:"#B8C2E8",border:"1px solid rgba(255,255,255,.07)",fontSize:12}}>Modo práctica gratis</button></div><SBFooter/></div>);if(view==="memory")return(
     <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20,height:"100vh"}}>
       <SBHeader label={`Memoria Â· ${projects.length} op${projects.length!==1?"s":""}`}/>
       <div style={{flex:1,overflowY:"auto",padding:"6px 4px",scrollbarWidth:"none"}}>
@@ -291,7 +291,7 @@ function Sidebar({onNew,projects=[],onOpen,onSignOut,session}) {
         <button onClick={onNew} style={{width:"100%",display:"flex",alignItems:"center",gap:9,padding:"9px 14px",borderRadius:9,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.18)",color:"#E8EEF8",fontSize:13,fontFamily:"'DM Sans',sans-serif",fontWeight:500,transition:"all .18s ease",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(0,229,255,.13)";e.currentTarget.style.borderColor=AC;}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(0,229,255,.08)";e.currentTarget.style.borderColor="rgba(0,229,255,.18)";}}><I.Plus/> Nuevo chat</button>
       </div>
       <div style={{padding:"4px 8px",flexShrink:0}}>
-        {[{k:"search",l:"Buscar chat",Ic:I.Search},{k:"library",l:"Base de Conocimiento",Ic:I.Book},{k:"memory",l:"Memoria",Ic:I.Memory}].map(({k,l,Ic})=>(
+        {[{k:"search",l:"Buscar chat",Ic:I.Search},{k:"library",l:"Base de Conocimiento",Ic:I.Book},{k:"codex",l:"Codex",Ic:I.Memory},{k:"memory",l:"Memoria",Ic:I.Memory}].map(({k,l,Ic})=>(
           <button key={k} onClick={()=>setView(k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:7,background:"transparent",color:"#6a7090",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .15s ease",textAlign:"left",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,.04)";e.currentTarget.style.color="#B8C2E8";}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#6a7090";}}>
             <span style={{opacity:.55,flexShrink:0}}><Ic/></span><span>{l}</span>
           </button>
@@ -473,3 +473,4 @@ export default function App() {
 
 
 <style>{`@media (max-width: 768px){body{overflow:hidden!important;}div[style*='width:232px'],div[style*='width: 232px']{display:none!important;}textarea{font-size:16px!important;}button{min-height:34px;}}`}</style>
+
