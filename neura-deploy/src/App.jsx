@@ -471,3 +471,5 @@ export default function App() {
 
 
 
+
+<style>{`@media (max-width: 768px){body{overflow:hidden!important;}div[style*='width:232px'],div[style*='width: 232px']{display:none!important;}textarea{font-size:16px!important;}button{min-height:34px;}}`}</style>
