@@ -445,7 +445,7 @@ export default function App() {
         data=await res.json().catch(()=>null);
       }catch(netErr){console.error("[N] net:",netErr&&netErr.message);addReply(ERR.net);return;}
       if(!res.ok||!data){const t=data&&(data.type||data.error&&data.error.type)||"";const s=res.status;if(s===401||t.includes("auth")){addReply(ERR.auth);return;}if(s===429||t.includes("limit")||t.includes("exceeded")){addReply(ERR.lim);return;}addReply(ERR.gen);return;}
-      const raw2=data&&data.content&&data.content[0]&&data.content[0].text?data.content[0].text:"";
+      const raw2 = data?.reply || data?.content?.[0]?.text || "";;
       if(!raw2){addReply(ERR.gen);return;}
       let aMsg={role:"assistant",content:raw2,createdAt:new Date().toISOString()};
       if(raw2.trimStart().startsWith("{")&&raw2.includes("__neura_routes")){try{const parsed=JSON.parse(raw2.trim());if(parsed.__neura_routes===true&&Array.isArray(parsed.routes)&&parsed.routes.length)aMsg={role:"assistant",type:"routes",intent:parsed.intent||"",routes:parsed.routes,resolved:false,createdAt:new Date().toISOString()};}catch(je){console.warn("[N] json:",je&&je.message);}}
