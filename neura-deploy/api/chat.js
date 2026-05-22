@@ -86,11 +86,7 @@ NEURA opera cognitivamente.
 
     const data = await response.json();
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data
-      });
-    }
+    if (!response.ok) { return res.status(200).json({ reply: "OPENAI ERROR: " + JSON.stringify(data) }); }
 
     return res.status(200).json({
       reply: data.choices?.[0]?.message?.content || "Sin respuesta"
