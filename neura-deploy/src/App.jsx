@@ -1,4 +1,4 @@
-neura.jsximport { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const SUPABASE_URL      = "https://qrjabnoghrjiukkdbgap.supabase.co";
 const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
