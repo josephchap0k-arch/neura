@@ -588,7 +588,7 @@ export default function NEURA() {
   const openProject=async p=>{
     setView&&setView("chat");
     setActiveProject(p);projRef.current=p;
-    const localMsgs=sg(\`neura-msgs-${p.id}\`)||[];
+    const localMsgs=sg("neura-msgs-"+p.id)||[];
     setMessages(localMsgs);
     if(session?.user?.id){ db.getMessages(session.user.id,p.id).then(msgs=>{ if(msgs&&msgs.length>localMsgs.length) setMessages(msgs); }); }
     setShowWelcome(false);
