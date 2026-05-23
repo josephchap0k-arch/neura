@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+neura.jsximport { useState, useRef, useEffect } from "react";
 
-// ── CONFIG ────────────────────────────────────────────────────────────────────
 const SUPABASE_URL      = "https://qrjabnoghrjiukkdbgap.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY"; // replace with your key from Supabase Settings → API
+const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
 const USE_SUPABASE      = !SUPABASE_ANON_KEY.startsWith("YOUR_");
 const SIDEBAR_W         = 232;
 
@@ -23,7 +22,6 @@ const MODES = {
   master:    {label:"Maestro",   sub:"Visión sistémica",  color:"#00E5FF",prompt:"MODO MAESTRO: Pensamiento sistémico, visión global, conexiones no obvias."},
 };
 
-// ── ICONS ─────────────────────────────────────────────────────────────────────
 const I = {
   Plus:    ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>,
   Search:  ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.6"/><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>,
@@ -32,6 +30,7 @@ const I = {
   Send:    ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   Close:   ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
   Mic:     ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.6"/><path d="M19 10a7 7 0 01-14 0M12 19v3M8 22h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>,
+  Image:   ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.6"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   Clip:    ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   ChevD:   ()=><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   ArrowUp: ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
@@ -58,19 +57,18 @@ function Logo({size=28}) {
   );
 }
 
-// ── STORAGE — localStorage for production ─────────────────────────────────────
-const sg = k => { try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;} };
-const ss = (k,v) => { try{localStorage.setItem(k,JSON.stringify(v));}catch{} };
-const sd = k => { try{localStorage.removeItem(k);}catch{} };
+const sg = async k => { try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;} };
+const ss = async (k,v) => { try{await window.storage.set(k,JSON.stringify(v));}catch{} };
+const sd = async k => { try{await window.storage.delete(k);}catch{} };
 
 const sb = {
   h:()=>({Authorization:`Bearer ${SUPABASE_ANON_KEY}`,"Content-Type":"application/json",apikey:SUPABASE_ANON_KEY,"Prefer":"return=representation"}),
   ah:t=>({Authorization:`Bearer ${t}`,"Content-Type":"application/json",apikey:SUPABASE_ANON_KEY,"Prefer":"return=representation"}),
   async req(path,opts={}){const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...opts,headers:{...this.h(),...(opts.headers||{})}});return r.ok?r.json():null;},
-  async signIn(e,p){const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:this.h(),body: JSON.stringify({ message: txt })});return r.json();},
-  async signUp(e,p){const r=await fetch(`${SUPABASE_URL}/auth/v1/signup`,{method:"POST",headers:this.h(),body: JSON.stringify({ message: txt })});return r.json();},
+  async signIn(e,p){const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:this.h(),body:JSON.stringify({email:e,password:p})});return r.json();},
+  async signUp(e,p){const r=await fetch(`${SUPABASE_URL}/auth/v1/signup`,{method:"POST",headers:this.h(),body:JSON.stringify({email:e,password:p})});return r.json();},
   async signOut(t){await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:this.ah(t)});},
-  async refresh(rt){const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:this.h(),body: JSON.stringify({ message: txt })});return r.json();},
+  async refresh(rt){const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:this.h(),body:JSON.stringify({refresh_token:rt})});return r.json();},
   select:(t,p="")=>sb.req(`${t}?${p}`),
   insert:(t,b)=>sb.req(t,{method:"POST",body:JSON.stringify(b)}),
   update:(t,id,b)=>sb.req(`${t}?id=eq.${id}`,{method:"PATCH",body:JSON.stringify(b)}),
@@ -79,26 +77,29 @@ const sb = {
 
 const store = {
   uid:null,
-  getProjects(){return sg("neura-projects")||[];},
-  saveProject(p){
-    const all=sg("neura-projects")||[]; const i=all.findIndex(x=>x.id===p.id); const now=new Date().toISOString();
+  async getProjects(){
+    if(USE_SUPABASE&&this.uid){try{return await sb.select("projects",`user_id=eq.${this.uid}&order=updated_at.desc`)||[];}catch{}}
+    return await sg("neura-projects")||[];
+  },
+  async saveProject(p){
+    const all=await sg("neura-projects")||[]; const i=all.findIndex(x=>x.id===p.id); const now=new Date().toISOString();
     if(i>=0)all[i]={...all[i],...p,updatedAt:now};else all.unshift({...p,createdAt:now,updatedAt:now});
-    ss("neura-projects",all);
-    if(USE_SUPABASE&&this.uid){sb.insert("projects",{id:p.id,user_id:this.uid,title:p.title,status:p.status||"LIVE"}).catch(()=>{});}
+    await ss("neura-projects",all);
+    if(USE_SUPABASE&&this.uid){try{await sb.insert("projects",{id:p.id,user_id:this.uid,title:p.title,status:p.status||"LIVE"});}catch{}}
   },
-  updateProject(id,u){
-    const all=sg("neura-projects")||[]; const i=all.findIndex(x=>x.id===id);
-    if(i>=0){all[i]={...all[i],...u,updatedAt:new Date().toISOString()};ss("neura-projects",all);}
-    if(USE_SUPABASE&&this.uid){sb.update("projects",id,{status:u.status,last_summary:u.lastSummary}).catch(()=>{});}
+  async updateProject(id,u){
+    const all=await sg("neura-projects")||[]; const i=all.findIndex(x=>x.id===id);
+    if(i>=0){all[i]={...all[i],...u,updatedAt:new Date().toISOString()};await ss("neura-projects",all);}
+    if(USE_SUPABASE&&this.uid){try{await sb.update("projects",id,{status:u.status,last_summary:u.lastSummary});}catch{}}
   },
-  deleteProject(id){ss("neura-projects",(sg("neura-projects")||[]).filter(p=>p.id!==id));sd(`neura-msgs-${id}`);},
-  getMessages(pid){return sg(`neura-msgs-${pid}`)||[];},
-  saveMessages(pid,msgs){ss(`neura-msgs-${pid}`,msgs.map(m=>({role:m.role,content:m.content||null,type:m.type||null,intent:m.intent||null,routes:m.routes||null,resolved:m.resolved||false,resolvedLabel:m.resolvedLabel||null,createdAt:m.createdAt||new Date().toISOString()})));},
-  appendMsg(pid,m){if(USE_SUPABASE&&this.uid){sb.insert("messages",{project_id:pid,user_id:this.uid,role:m.role,content:m.content||""}).catch(()=>{});}},
-  getTasks(){return sg("neura-tasks")||[];},
-  addTask(t){const all=sg("neura-tasks")||[];all.unshift(t);ss("neura-tasks",all);return t;},
-  updateTask(id,u){ss("neura-tasks",(sg("neura-tasks")||[]).map(t=>t.id===id?{...t,...u}:t));},
-  deleteTask(id){ss("neura-tasks",(sg("neura-tasks")||[]).filter(t=>t.id!==id));},
+  async deleteProject(id){await ss("neura-projects",(await sg("neura-projects")||[]).filter(p=>p.id!==id));await sd(`neura-msgs-${id}`);},
+  async getMessages(pid){return await sg(`neura-msgs-${pid}`)||[];},
+  async saveMessages(pid,msgs){await ss(`neura-msgs-${pid}`,msgs.map(m=>({role:m.role,content:m.content||null,type:m.type||null,intent:m.intent||null,routes:m.routes||null,resolved:m.resolved||false,resolvedLabel:m.resolvedLabel||null,createdAt:m.createdAt||new Date().toISOString()})));},
+  async appendMsg(pid,m){if(USE_SUPABASE&&this.uid){try{await sb.insert("messages",{project_id:pid,user_id:this.uid,role:m.role,content:m.content||""});}catch{}}},
+  async getTasks(){return await sg("neura-tasks")||[];},
+  async addTask(t){const all=await sg("neura-tasks")||[];all.unshift(t);await ss("neura-tasks",all);return t;},
+  async updateTask(id,u){await ss("neura-tasks",(await sg("neura-tasks")||[]).map(t=>t.id===id?{...t,...u}:t));},
+  async deleteTask(id){await ss("neura-tasks",(await sg("neura-tasks")||[]).filter(t=>t.id!==id));},
 };
 
 const genId  = ()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
@@ -178,14 +179,15 @@ function Routes({msg,onSelect}) {
   );
 }
 
-function Sidebar({onNew,projects=[],onOpen,onSignOut,session}) {
+function Sidebar({onNew,projects=[],tasks=[],onOpen,onSignOut,session,onOpenCodex}) {
   const [view,setView]=useState(null);
   const [q,setQ]=useState("");
   const user=session?.user?.email?.split("@")[0]||"Usuario";
   const init=user[0].toUpperCase();
   const recent=[...projects].sort((a,b)=>((b.updatedAt||b.updated_at||"")>=(a.updatedAt||a.updated_at||""))?1:-1).slice(0,7);
   const results=q?projects.filter(p=>(p.title||"").toLowerCase().includes(q.toLowerCase())):[];
-  const AC="#00E5FF",BD="rgba(0,229,255,.1)",BASE="rgba(5,7,19,.95)";
+  const AC="#00E5FF"; const BD="rgba(0,229,255,.1)"; const BASE="rgba(5,7,19,.95)";
+
   const go=p=>{onOpen&&onOpen(p);setView(null);};
 
   const SBHeader=({label})=>(
@@ -226,7 +228,7 @@ function Sidebar({onNew,projects=[],onOpen,onSignOut,session}) {
   );
 
   if(view==="search")return(
-    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20,height:"100vh"}}>
+    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20}}>
       <SBHeader label="Buscar chat"/>
       <div style={{padding:"10px 12px 6px",flexShrink:0}}>
         <div style={{position:"relative"}}>
@@ -243,8 +245,8 @@ function Sidebar({onNew,projects=[],onOpen,onSignOut,session}) {
     </div>
   );
 
-  if(view==="codex")return(<div style={{display:"flex",height:"100vh",width:"100%",background:"#050713",color:"#E8EEF8"}}><div style={{width:260,padding:16,borderRight:"1px solid rgba(0,229,255,.12)",background:"rgba(5,7,19,.98)"}}><div style={{fontSize:20,fontWeight:700,color:"#00E5FF",marginBottom:12}}>? CODEX</div><div style={{fontSize:12,color:"#8D96C8",marginBottom:18}}>Automatizaci�n operativa</div><button onClick={()=>setCodexTab("gmail")} style={{width:"100%",padding:14,borderRadius:14,background:"linear-gradient(135deg,#EA4335,#ff8a65)",border:"none",color:"#fff",fontWeight:700,boxShadow:"0 0 25px rgba(234,67,53,.35)",marginBottom:10,cursor:"pointer"}}>?? Gmail</button><button onClick={()=>setCodexTab("slack")} style={{width:"100%",padding:14,borderRadius:14,background:"linear-gradient(135deg,#7B4DFF,#512DA8)",border:"none",color:"#fff",fontWeight:700,boxShadow:"0 0 25px rgba(123,77,255,.35)",marginBottom:10,cursor:"pointer"}}>?? Slack</button><button onClick={()=>setCodexTab("drive")} style={{width:"100%",padding:14,borderRadius:14,background:"linear-gradient(135deg,#34A853,#00C853)",border:"none",color:"#fff",fontWeight:700,boxShadow:"0 0 25px rgba(52,168,83,.35)",marginBottom:10,cursor:"pointer"}}>?? Drive</button><button style={{width:"100%",padding:12,borderRadius:10,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",color:"#B8C2E8"}}>Modo pr�ctica</button></div><div style={{flex:1,padding:24,display:"flex",flexDirection:"column",gap:16}}>{codexTab==="home"&&<div><div style={{fontSize:28,fontWeight:800,color:"#fff",marginBottom:10}}>? NEURA CODEX</div><div style={{color:"#8D96C8"}}>Sistema operativo de automatizaci�n inteligente</div></div>}{codexTab==="gmail"&&<div style={{padding:24,borderRadius:18,background:"rgba(255,255,255,.04)",border:"1px solid rgba(234,67,53,.25)"}}><div style={{fontSize:24,fontWeight:700,color:"#fff"}}>?? Automatizaci�n Gmail</div><div style={{marginTop:12,color:"#B8C2E8"}}>Conect� Gmail y cre� secuencias autom�ticas.</div><button style={{marginTop:18,padding:"12px 18px",borderRadius:12,background:"#EA4335",color:"#fff",border:"none"}}>Conectar Gmail</button></div>}{codexTab==="slack"&&<div style={{padding:24,borderRadius:18,background:"rgba(255,255,255,.04)",border:"1px solid rgba(123,77,255,.25)"}}><div style={{fontSize:24,fontWeight:700,color:"#fff"}}>?? Automatizaci�n Slack</div><div style={{marginTop:12,color:"#B8C2E8"}}>Alertas operativas y comandos internos.</div><button style={{marginTop:18,padding:"12px 18px",borderRadius:12,background:"#7B4DFF",color:"#fff",border:"none"}}>Conectar Slack</button></div>}{codexTab==="drive"&&<div style={{padding:24,borderRadius:18,background:"rgba(255,255,255,.04)",border:"1px solid rgba(52,168,83,.25)"}}><div style={{fontSize:24,fontWeight:700,color:"#fff"}}>?? Automatizaci�n Drive</div><div style={{marginTop:12,color:"#B8C2E8"}}>CSV, documentos y flujos inteligentes.</div><button style={{marginTop:18,padding:"12px 18px",borderRadius:12,background:"#34A853",color:"#fff",border:"none"}}>Conectar Drive</button></div>}<div style={{fontSize:24,fontWeight:700}}>Crear automatizaci�n</div><div style={{display:"flex",gap:10}}><input id="codexInput" placeholder="Decime qu� quer�s automatizar..." style={{flex:1,padding:14,borderRadius:12,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",color:"#fff"}}/><button onClick={()=>{document.getElementById("codexResult").style.display="block"}} style={{padding:"12px 18px",borderRadius:12,background:"linear-gradient(135deg,#35D8FF,#7B4DFF)",color:"#fff"}}>Ejecutar</button></div><div id="codexResult" style={{display:"none",padding:18,borderRadius:16,background:"rgba(255,255,255,.04)",border:"1px solid rgba(0,229,255,.12)"}}><div style={{color:"#00E5FF",fontWeight:700,marginBottom:12}}>? AUTOMATIZACI�N GENERADA</div><div style={{display:"flex",gap:8,marginBottom:16}}><span>Trigger diario 09:00</span><span>?</span><span>Gmail</span><span>?</span><span>Mensaje</span><span>?</span><span>Confirmaci�n</span></div><div>[?] Objetivo detectado</div><div>[?] Trigger configurado</div><div>[?] Acci�n Gmail preparada</div><div>[?] Modo pr�ctica listo</div><button onClick={()=>alert("Automatizaci�n simulada correctamente.")} style={{marginTop:14,padding:10,borderRadius:10,background:"rgba(0,229,255,.12)",color:"#00E5FF",border:"1px solid rgba(0,229,255,.2)"}}>Simular</button><button onClick={()=>alert("Modo real: conectar Gmail ? autorizar permisos ? confirmar horario ? activar automatizaci�n.")} style={{marginLeft:8,padding:10,borderRadius:10,background:"rgba(255,255,255,.06)",color:"#E8EEF8",border:"1px solid rgba(255,255,255,.1)"}}>Crear real</button></div></div></div>);if(view==="memory")return(<div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:"1px solid rgba(0,229,255,.1)",zIndex:20}}><SBHeader label="Codex"/><div style={{padding:14,display:"flex",flexDirection:"column",gap:10}}><div style={{padding:14,borderRadius:10,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.18)",color:"#E8EEF8",fontFamily:"DM Sans",fontSize:13}}>? CODEX<br/><span style={{color:"#6a7090",fontSize:11}}>Automatizaciones, conectores y ejecuci�n operativa.</span></div><textarea value={codexInput} onChange={e=>setCodexInput(e.target.value)} placeholder="Decime qu� quer�s automatizar..." style={{width:"100%",minHeight:90,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",borderRadius:10,padding:12,color:"#E8EEF8",fontSize:13,resize:"none",outline:"none"}}/><button onClick={runCodex} style={{padding:12,borderRadius:9,background:"rgba(0,229,255,.12)",color:"#00E5FF",border:"1px solid rgba(0,229,255,.18)",fontSize:12,cursor:"pointer"}}>Crear automatizaci�n</button>{codexFlow&&<div style={{padding:14,borderRadius:10,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.08)",display:"flex",flexDirection:"column",gap:6,color:"#E8EEF8",fontSize:12}}><b>? AUTOMATIZACI�N DETECTADA</b><span>Trigger: {codexFlow.trigger}</span><span>Acci�n: {codexFlow.action}</span><span>Canal: {codexFlow.channel}</span><span>Asunto: {codexFlow.subject}</span><span>Cuerpo: {codexFlow.body}</span><span>Estado: {codexFlow.status}</span><button style={{marginTop:8,padding:10,borderRadius:8,background:"rgba(0,229,255,.1)",border:"1px solid rgba(0,229,255,.15)",color:"#00E5FF"}}>Simular automatizaci�n</button><button style={{padding:10,borderRadius:8,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.08)",color:"#B8C2E8"}}>Crear en modo real</button><button style={{padding:10,borderRadius:8,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.08)",color:"#B8C2E8"}}>Conectar Gmail</button></div>}<div style={{display:"grid",gridTemplateColumns:"1fr",gap:10}}><button style={{padding:14,borderRadius:12,background:"linear-gradient(135deg,rgba(234,67,53,.18),rgba(255,255,255,.04))",border:"1px solid rgba(234,67,53,.35)",color:"#fff",fontSize:13,fontWeight:700,textAlign:"left"}}>?? Gmail<br/><span style={{fontSize:11,color:"#B8C2E8",fontWeight:400}}>Enviar correos y secuencias</span></button><button style={{padding:14,borderRadius:12,background:"linear-gradient(135deg,rgba(126,87,194,.18),rgba(255,255,255,.04))",border:"1px solid rgba(126,87,194,.35)",color:"#fff",fontSize:13,fontWeight:700,textAlign:"left"}}>?? Slack<br/><span style={{fontSize:11,color:"#B8C2E8",fontWeight:400}}>Alertas y operaciones internas</span></button><button style={{padding:14,borderRadius:12,background:"linear-gradient(135deg,rgba(52,168,83,.18),rgba(255,255,255,.04))",border:"1px solid rgba(52,168,83,.35)",color:"#fff",fontSize:13,fontWeight:700,textAlign:"left"}}>?? Drive<br/><span style={{fontSize:11,color:"#B8C2E8",fontWeight:400}}>Archivos, CSV y documentos</span></button></div><button style={{padding:12,borderRadius:9,background:"rgba(255,255,255,.04)",color:"#B8C2E8",border:"1px solid rgba(255,255,255,.07)",fontSize:12}}>Modo pr�ctica gratis</button></div><SBFooter/></div>);if(view==="memory")return(
-    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20,height:"100vh"}}>
+  if(view==="memory")return(
+    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20}}>
       <SBHeader label={`Memoria · ${projects.length} op${projects.length!==1?"s":""}`}/>
       <div style={{flex:1,overflowY:"auto",padding:"6px 4px",scrollbarWidth:"none"}}>
         {!projects.length?<div style={{padding:24,textAlign:"center",fontSize:12,color:"#404060",fontFamily:"'DM Sans',sans-serif"}}>Las conversaciones aparecerán aquí.</div>
@@ -264,7 +266,7 @@ function Sidebar({onNew,projects=[],onOpen,onSignOut,session}) {
   );
 
   if(view==="library")return(
-    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20,height:"100vh"}}>
+    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20}}>
       <SBHeader label="Base de Conocimiento"/>
       <div style={{flex:1,padding:12,overflowY:"auto",scrollbarWidth:"none"}}>
         {[{l:"Sistemas",v:projects.length,d:"Operaciones y pipelines"},{l:"Documentos",v:0,d:"PDFs y textos"},{l:"Outputs",v:0,d:"Resultados generados"}].map((c,i)=>(
@@ -277,13 +279,16 @@ function Sidebar({onNew,projects=[],onOpen,onSignOut,session}) {
             <span style={{fontSize:11,fontFamily:"'Syne',sans-serif",color:c.v>0?AC:"#252535",fontWeight:600}}>{c.v}</span>
           </div>
         ))}
+        <div style={{marginTop:12,padding:12,borderRadius:8,background:"rgba(0,229,255,.03)",border:`1px solid ${BD}`}}>
+          <div style={{fontSize:11,color:"#404060",fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,textAlign:"center"}}>El conocimiento que generes con NEURA se organiza aquí automáticamente.</div>
+        </div>
       </div>
       <SBFooter/>
     </div>
   );
 
   return(
-    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20,overflow:"hidden",height:"100vh"}}>
+    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20,overflow:"hidden"}}>
       <div style={{padding:"14px 16px 10px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${BD}`,flexShrink:0}}>
         <Logo size={20}/><span style={{fontFamily:"'Orbitron',monospace",fontWeight:700,fontSize:12,letterSpacing:".2em",color:"#F4F7FF"}}>NEURA</span>
       </div>
@@ -291,11 +296,16 @@ function Sidebar({onNew,projects=[],onOpen,onSignOut,session}) {
         <button onClick={onNew} style={{width:"100%",display:"flex",alignItems:"center",gap:9,padding:"9px 14px",borderRadius:9,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.18)",color:"#E8EEF8",fontSize:13,fontFamily:"'DM Sans',sans-serif",fontWeight:500,transition:"all .18s ease",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(0,229,255,.13)";e.currentTarget.style.borderColor=AC;}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(0,229,255,.08)";e.currentTarget.style.borderColor="rgba(0,229,255,.18)";}}><I.Plus/> Nuevo chat</button>
       </div>
       <div style={{padding:"4px 8px",flexShrink:0}}>
-        {[{k:"search",l:"Buscar chat",Ic:I.Search},{k:"library",l:"Base de Conocimiento",Ic:I.Book},{k:"codex",l:"Codex",Ic:I.Memory},{k:"memory",l:"Memoria",Ic:I.Memory}].map(({k,l,Ic})=>(
+        {[{k:"search",l:"Buscar chat",Ic:I.Search},{k:"library",l:"Base de Conocimiento",Ic:I.Book},{k:"memory",l:"Memoria",Ic:I.Memory}].map(({k,l,Ic})=>(
           <button key={k} onClick={()=>setView(k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:7,background:"transparent",color:"#6a7090",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .15s ease",textAlign:"left",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,.04)";e.currentTarget.style.color="#B8C2E8";}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#6a7090";}}>
             <span style={{opacity:.55,flexShrink:0}}><Ic/></span><span>{l}</span>
           </button>
         ))}
+        {/* CODEX — vista de automatización */}
+        <button onClick={onOpenCodex} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:7,background:"rgba(123,77,255,.08)",border:"1px solid rgba(123,77,255,.2)",color:"#B45CFF",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .15s ease",textAlign:"left",cursor:"pointer",marginTop:4}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(123,77,255,.14)";e.currentTarget.style.color="#c060ff";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(123,77,255,.08)";e.currentTarget.style.color="#B45CFF";}}>
+          <span style={{opacity:.8,flexShrink:0,fontSize:13}}>⚡</span><span style={{fontWeight:500}}>CODEX</span>
+          <span style={{marginLeft:"auto",fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".08em",opacity:.6}}>AUTO</span>
+        </button>
       </div>
       <div style={{height:1,background:"rgba(255,255,255,.04)",margin:"6px 14px",flexShrink:0}}/>
       <div style={{flex:1,overflowY:"auto",scrollbarWidth:"none",minHeight:0,padding:"0 4px"}}>
@@ -307,41 +317,162 @@ function Sidebar({onNew,projects=[],onOpen,onSignOut,session}) {
   );
 }
 
-function Home({onSend,selectedMode,onMode}) {
+function CodexWorkspace({onBack}) {
+  const [inp,setInp]=useState("");
+  const [result,setResult]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [connectors,setConnectors]=useState({gmail:true,slack:true,drive:false,whatsapp:false,stripe:false});
+  const APPS=[{id:"gmail",icon:"📧",l:"Gmail"},{id:"slack",icon:"💬",l:"Slack"},{id:"drive",icon:"🗂",l:"Drive"},{id:"whatsapp",icon:"📱",l:"WhatsApp"},{id:"stripe",icon:"💳",l:"Stripe"}];
+  const VT="#B45CFF";
+  const run=(action)=>{
+    if(!inp.trim()&&action!=="apps"){setResult("⚠ Describí la automatización primero.");return;}
+    setLoading(true);setResult(null);
+    setTimeout(()=>{
+      const active=Object.entries(connectors).filter(([,v])=>v).map(([k])=>k).join(", ");
+      const res={
+        simulate:`TRIGGER: "${inp.slice(0,35)}..."\n↓\nIA AGENT: Analiza → clasifica → genera respuesta\n↓\nACCIÓN: Ejecutar en ${active||"plataformas conectadas"}\n\n✓ Simulación completada — Score: 87/100\n📊 Cobertura: Alta | Velocidad: Óptima`,
+        apps:`⚙ Conectores activos: ${active||"ninguno"}\nActivá los que necesitás en el panel inferior.`,
+        create:`⚡ AUTOMATIZACIÓN CREADA\n\nNombre: Auto-${inp.slice(0,18)}\nEstado: ACTIVO\nPipeline: Trigger → IA → Acción (${active||"sin conectores"})\n\n→ Monitoreable desde Memoria.`,
+      }[action];
+      setResult(res);setLoading(false);
+    },1400);
+  };
+  const BD2="rgba(123,77,255,.15)";
+  const nodes=[{l:"TRIGGER",s:"Evento",x:20,c:"#35D8FF",ic:"⚡"},{l:"IA AGENT",s:"Procesa",x:190,c:"#00E5FF",ic:"🧠"},{l:"ACCIÓN",s:"Ejecuta",x:360,c:VT,ic:"🎯"}];
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,background:"#050713",overflow:"hidden"}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",height:50,background:"rgba(5,7,19,.97)",borderBottom:"1px solid rgba(123,77,255,.2)",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,color:"#4050a0",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#8090d0"} onMouseLeave={e=>e.currentTarget.style.color="#4050a0"}><I.Back/>Inicio</button>
+          <div style={{width:1,height:14,background:"rgba(255,255,255,.06)"}}/>
+          <span style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".15em",color:VT,opacity:.8}}>⚡ CODEX</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:5,background:"rgba(123,77,255,.08)",border:"1px solid rgba(123,77,255,.2)"}}>
+          <span style={{width:4,height:4,borderRadius:"50%",background:VT,animation:"blink 2s infinite",display:"inline-block"}}/>
+          <span style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:VT}}>MOTOR DE AUTOMATIZACIÓN</span>
+        </div>
+      </div>
+      {/* Body */}
+      <div style={{flex:1,overflowY:"auto",padding:20,scrollbarWidth:"none"}}>
+        <div style={{maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
+          {/* Canvas */}
+          <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(123,77,255,.15)",borderRadius:14,padding:"18px 20px"}}>
+            <div style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".14em",color:VT,opacity:.6,marginBottom:14}}>CANVAS COGNITIVO</div>
+            <svg width="100%" height="110" viewBox="0 0 520 100" style={{overflow:"visible"}}>
+              <defs><marker id="ca" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="rgba(0,229,255,.45)"/></marker></defs>
+              <line x1="132" y1="50" x2="188" y2="50" stroke="rgba(0,229,255,.3)" strokeWidth="1.5" strokeDasharray="4,3" markerEnd="url(#ca)"/>
+              <line x1="302" y1="50" x2="358" y2="50" stroke="rgba(123,77,255,.3)" strokeWidth="1.5" strokeDasharray="4,3" markerEnd="url(#ca)"/>
+              {nodes.map((n,i)=>(
+                <g key={i} transform={`translate(${n.x},15)`}>
+                  <rect width="112" height="70" rx="10" fill="rgba(255,255,255,.03)" stroke={n.c} strokeWidth="1.2" strokeOpacity=".3"/>
+                  <text x="10" y="26" fill={n.c} fontSize="16">{n.ic}</text>
+                  <text x="32" y="24" fill={n.c} fontSize="9" fontFamily="Syne,sans-serif" fontWeight="700" letterSpacing="1">{n.l}</text>
+                  <text x="10" y="54" fill="rgba(255,255,255,.35)" fontSize="10" fontFamily="DM Sans,sans-serif">{n.s}</text>
+                  <circle cx="56" cy="74" r="3" fill={n.c} opacity=".5" style={{animation:"blink 2s ease-in-out infinite"}}/>
+                </g>
+              ))}
+            </svg>
+          </div>
+          {/* Input */}
+          <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(0,229,255,.1)",borderRadius:14,padding:"18px 20px"}}>
+            <div style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".14em",color:"#00E5FF",opacity:.6,marginBottom:12}}>INSTRUCCIÓN</div>
+            <textarea value={inp} onChange={e=>setInp(e.target.value)} placeholder="Decime qué querés automatizar..." rows={2}
+              style={{width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",resize:"none",lineHeight:1.55,marginBottom:12}}/>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {[{l:"▶ SIMULAR",a:"simulate",bg:"rgba(0,229,255,.08)",bc:"rgba(0,229,255,.25)",c:"#00E5FF"},
+                {l:"⚙ CONECTAR APPS",a:"apps",bg:"rgba(255,255,255,.04)",bc:"rgba(255,255,255,.1)",c:"#B8C2E8"},
+                {l:"⚡ CREAR AUTO",a:"create",bg:"linear-gradient(135deg,rgba(53,216,255,.12),rgba(123,77,255,.18))",bc:"rgba(123,77,255,.3)",c:"#E8EEF8"}
+              ].map(({l,a,bg,bc,c})=>(
+                <button key={a} onClick={()=>run(a)} style={{padding:"9px 16px",borderRadius:8,background:bg,border:`1px solid ${bc}`,color:c,fontSize:12,fontFamily:"'Syne',sans-serif",letterSpacing:".06em",fontWeight:600,cursor:"pointer",transition:"all .2s ease"}} onMouseEnter={e=>e.currentTarget.style.opacity=".75"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>{l}</button>
+              ))}
+            </div>
+            {loading&&<div style={{marginTop:14,display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:10,background:"rgba(255,255,255,.03)",border:"1px solid rgba(0,229,255,.1)"}}>
+              <span style={{width:6,height:6,borderRadius:"50%",background:"#00E5FF",display:"inline-block",animation:"blink 1.2s ease-in-out infinite"}}/><span style={{fontSize:13,color:"#606880",fontStyle:"italic"}}>Construyendo automatización...</span>
+            </div>}
+            {result&&<div style={{marginTop:14,padding:"14px 16px",borderRadius:10,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.15)",animation:"fadeUp .3s ease"}}>
+              <div style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".12em",color:"#00E5FF",marginBottom:8,opacity:.7}}>PIPELINE GENERADO</div>
+              <div style={{fontSize:13,color:"#B8C2E8",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{result}</div>
+            </div>}
+          </div>
+          {/* Connectors */}
+          <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"18px 20px"}}>
+            <div style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".14em",color:"#606880",marginBottom:14}}>PANEL DE CONECTORES</div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              {APPS.map(({id,icon,l})=>{
+                const on=connectors[id];
+                return(<button key={id} onClick={()=>setConnectors(p=>({...p,[id]:!p[id]}))}
+                  style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,padding:"14px 18px",borderRadius:12,background:on?"rgba(0,229,255,.06)":"rgba(255,255,255,.02)",border:`1px solid ${on?"rgba(0,229,255,.25)":"rgba(255,255,255,.06)"}`,color:on?"#E8EEF8":"#404060",transition:"all .2s ease",cursor:"pointer",minWidth:72}}>
+                  <span style={{fontSize:20}}>{icon}</span>
+                  <span style={{fontSize:10,fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>{l}</span>
+                  <span style={{fontSize:8,fontFamily:"'Syne',sans-serif",letterSpacing:".08em",color:on?"#00E5FF":"#252535"}}>{on?"ACTIVO":"OFF"}</span>
+                </button>);
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Home({onSend,selectedMode,onMode,isThinking}) {
   const [input,setInput]=useState("");
   const [focused,setFocused]=useState(false);
   const [img,setImg]=useState(null);
   const fileRef=useRef(null);
   const modeKeys=Object.keys(MODES);
-  const handleFile=f=>{if(!f||!f.type.startsWith("image/"))return;const r=new FileReader();r.onload=e=>setImg({base64:e.target.result.split(",")[1],mediaType:f.type,preview:e.target.result});r.readAsDataURL(f);};
-  const send=()=>{if(!input.trim()&&!img)return;onSend(input.trim(),img);setInput("");setImg(null);};
+
+  const handleFile=f=>{
+    if(!f||!f.type.startsWith("image/"))return;
+    const r=new FileReader(); r.onload=e=>setImg({base64:e.target.result.split(",")[1],mediaType:f.type,preview:e.target.result}); r.readAsDataURL(f);
+  };
+  const send=()=>{ if(!input.trim()&&!img)return; onSend(input.trim(),img); setInput(""); setImg(null); };
+
   return(
     <div style={{flex:1,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",background:"#050713"}}>
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 70% 60% at 55% 40%,rgba(53,216,255,.09) 0%,transparent 55%)",zIndex:0}}/>
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 70% 60% at 70% 35%,rgba(123,77,255,.14) 0%,transparent 60%)",zIndex:0}}/>
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"0 32px 20px",position:"relative",zIndex:1}}>
-        <div style={{marginBottom:18,animation:"orbBreath 4s ease-in-out infinite",willChange:"transform,filter"}}><Logo size={68}/></div>
+        <div style={{marginBottom:18,animation:isThinking?"orbThink 1.1s ease-in-out infinite":"orbBreath 4s ease-in-out infinite",willChange:"transform,filter"}}>
+          <Logo size={68}/>
+        </div>
         <div style={{fontFamily:"'Orbitron',monospace",fontSize:34,fontWeight:700,letterSpacing:".3em",color:"#F4F7FF",marginBottom:6,textAlign:"center",textShadow:"0 0 14px rgba(53,216,255,.15)"}}>NEURA</div>
         <div style={{fontSize:11,color:"#8D96C8",letterSpacing:".26em",fontFamily:"'Syne',sans-serif",marginBottom:28,textAlign:"center"}}>SISTEMA OPERATIVO COGNITIVO</div>
         <div style={{width:"100%",maxWidth:600,marginBottom:14}}>
-          {img&&(<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"7px 12px",borderRadius:9,background:"rgba(255,107,107,.05)",border:"1px solid rgba(255,107,107,.14)"}}><img src={img.preview} alt="" style={{width:26,height:26,objectFit:"cover",borderRadius:5}}/><span style={{flex:1,fontSize:10,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:"#ff6b6b"}}>ASSET LISTO</span><button onClick={()=>setImg(null)} style={{color:"#ff6b6b",display:"flex",cursor:"pointer"}}><I.Close/></button></div>)}
+          {img&&(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"7px 12px",borderRadius:9,background:"rgba(255,107,107,.05)",border:"1px solid rgba(255,107,107,.14)"}}>
+              <img src={img.preview} alt="" style={{width:26,height:26,objectFit:"cover",borderRadius:5}}/>
+              <span style={{flex:1,fontSize:10,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:"#ff6b6b"}}>ASSET LISTO</span>
+              <button onClick={()=>setImg(null)} style={{color:"#ff6b6b",display:"flex",cursor:"pointer"}}><I.Close/></button>
+            </div>
+          )}
           <div style={{background:"rgba(255,255,255,.055)",backdropFilter:"blur(24px)",border:`1px solid ${focused?"rgba(0,229,255,.55)":"rgba(120,150,255,.28)"}`,borderRadius:16,padding:"18px 18px 12px",boxShadow:focused?"0 0 40px rgba(0,229,255,.1)":"0 8px 40px rgba(0,0,0,.35)",transition:"all .3s ease"}}>
             <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} placeholder={img?"Agregá contexto...":"¿Qué querés construir hoy?"} rows={1} style={{width:"100%",background:"transparent",border:"none",color:"#F4F7FF",fontSize:16,fontFamily:"'DM Sans',sans-serif",resize:"none",lineHeight:1.5,maxHeight:120,overflow:"auto",fontWeight:300,marginBottom:12,letterSpacing:".01em",cursor:"text"}} onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}/>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{handleFile(e.target.files?.[0]);e.target.value="";}}/>
-              {[{Ic:I.Clip,a:()=>fileRef.current&&fileRef.current.click()},{Ic:I.Mic,a:()=>{}}].map(({Ic,a},i)=>(<button key={i} onClick={a} style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",justifyContent:"center",color:"#6F789F",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(0,229,255,.08)";e.currentTarget.style.color="#00E5FF";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,.05)";e.currentTarget.style.color="#6F789F";}}><Ic/></button>))}
+              {[{Ic:I.Clip,a:()=>fileRef.current&&fileRef.current.click()},{Ic:I.Mic,a:()=>{}}].map(({Ic,a},i)=>(
+                <button key={i} onClick={a} style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",justifyContent:"center",color:"#6F789F",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(0,229,255,.08)";e.currentTarget.style.color="#00E5FF";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,.05)";e.currentTarget.style.color="#6F789F";}}><Ic/></button>
+              ))}
               <div style={{flex:1}}/>
-              <button onClick={()=>{const keys=modeKeys;onMode(keys[(keys.indexOf(selectedMode)+1)%keys.length]);}} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:7,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",color:MODES[selectedMode].color,fontSize:11,fontFamily:"'Syne',sans-serif",letterSpacing:".06em",transition:"all .18s ease",opacity:.8,cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.borderColor="rgba(0,229,255,.3)";}} onMouseLeave={e=>{e.currentTarget.style.opacity=".8";e.currentTarget.style.borderColor="rgba(0,229,255,.12)";}}>{MODES[selectedMode].label}<I.ChevD/></button>
+              <button onClick={()=>{const keys=modeKeys;onMode(keys[(keys.indexOf(selectedMode)+1)%keys.length]);}} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:7,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",color:MODES[selectedMode].color,fontSize:11,fontFamily:"'Syne',sans-serif",letterSpacing:".06em",transition:"all .18s ease",opacity:.8,cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.borderColor="rgba(0,229,255,.3)";}} onMouseLeave={e=>{e.currentTarget.style.opacity=".8";e.currentTarget.style.borderColor="rgba(0,229,255,.12)";}}>
+                {MODES[selectedMode].label}<I.ChevD/>
+              </button>
               <button onClick={send} disabled={!input.trim()&&!img} style={{width:38,height:38,borderRadius:"50%",background:(input.trim()||img)?"linear-gradient(135deg,#35D8FF,#7B4DFF)":"rgba(255,255,255,.05)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s ease",color:"#fff",opacity:(input.trim()||img)?1:.25,boxShadow:(input.trim()||img)?"0 0 22px rgba(0,229,255,.35)":"none",cursor:"pointer"}}><I.ArrowUp/></button>
             </div>
           </div>
         </div>
         <div style={{width:"100%",maxWidth:600,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-          {modeKeys.map(k=>{const m=MODES[k];const sel=selectedMode===k;return(<button key={k} onClick={()=>onMode(k)} style={{padding:"12px 10px 16px",borderRadius:10,background:sel?"rgba(0,229,255,.07)":"rgba(255,255,255,.02)",border:`1px solid ${sel?"rgba(0,229,255,.28)":"rgba(255,255,255,.06)"}`,textAlign:"left",transition:"all .2s ease",display:"flex",flexDirection:"column",gap:5,position:"relative",cursor:"pointer"}} onMouseEnter={e=>{if(!sel){e.currentTarget.style.background="rgba(0,229,255,.04)";e.currentTarget.style.borderColor="rgba(0,229,255,.15)";}}} onMouseLeave={e=>{if(!sel){e.currentTarget.style.background="rgba(255,255,255,.02)";e.currentTarget.style.borderColor="rgba(255,255,255,.06)";}}}>
-            <div style={{width:5,height:5,borderRadius:"50%",background:sel?m.color:"rgba(255,255,255,.15)",boxShadow:sel?`0 0 6px ${m.color}`:"none",transition:"all .2s ease"}}/>
-            <div style={{fontSize:11,fontFamily:"'DM Sans',sans-serif",color:sel?"#F4F7FF":"#7080a0",fontWeight:sel?600:400,marginBottom:1}}>{m.label}</div>
-            <div style={{fontSize:10,fontFamily:"'DM Sans',sans-serif",color:"#3a3a5a",lineHeight:1.4}}>{m.sub}</div>
-          </button>);})}
+          {modeKeys.map(k=>{
+            const m=MODES[k]; const sel=selectedMode===k;
+            return(
+              <button key={k} onClick={()=>onMode(k)} style={{padding:"12px 10px 16px",borderRadius:10,background:sel?"rgba(0,229,255,.07)":"rgba(255,255,255,.02)",border:`1px solid ${sel?"rgba(0,229,255,.28)":"rgba(255,255,255,.06)"}`,textAlign:"left",transition:"all .2s ease",display:"flex",flexDirection:"column",gap:5,position:"relative",cursor:"pointer"}} onMouseEnter={e=>{if(!sel){e.currentTarget.style.background="rgba(0,229,255,.04)";e.currentTarget.style.borderColor="rgba(0,229,255,.15)";} }} onMouseLeave={e=>{if(!sel){e.currentTarget.style.background="rgba(255,255,255,.02)";e.currentTarget.style.borderColor="rgba(255,255,255,.06)";}}}>
+                <div style={{width:5,height:5,borderRadius:"50%",background:sel?m.color:"rgba(255,255,255,.15)",boxShadow:sel?`0 0 6px ${m.color}`:"none",transition:"all .2s ease"}}/>
+                <div style={{fontSize:11,fontFamily:"'DM Sans',sans-serif",color:sel?"#F4F7FF":"#7080a0",fontWeight:sel?600:400,marginBottom:1}}>{m.label}</div>
+                <div style={{fontSize:10,fontFamily:"'DM Sans',sans-serif",color:"#3a3a5a",lineHeight:1.4}}>{m.sub}</div>
+              </button>
+            );
+          })}
         </div>
         <div style={{marginTop:20,fontSize:11,color:"#7F88B8",fontFamily:"'DM Sans',sans-serif",letterSpacing:".04em"}}>Neura está listo para ayudarte</div>
       </div>
@@ -352,15 +483,15 @@ function Home({onSend,selectedMode,onMode}) {
 const CSS=`
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Syne:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;border:0;outline:none;background:none;}
-html,body,#root{height:100%;}
 button{cursor:pointer;} textarea,input{cursor:text;outline:none;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 @keyframes blink{0%,100%{opacity:.3;}50%{opacity:1;}}
 @keyframes orbBreath{0%,100%{transform:translateY(0);filter:drop-shadow(0 0 18px rgba(53,216,255,.5)) drop-shadow(0 0 40px rgba(123,77,255,.35));}50%{transform:translateY(-6px);filter:drop-shadow(0 0 30px rgba(53,216,255,.75)) drop-shadow(0 0 65px rgba(123,77,255,.55));}}
+@keyframes orbThink{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-4px) scale(1.04);}}
 ::-webkit-scrollbar{display:none;}
 `;
 
-export default function App() {
+export default function NEURA() {
   const [authReady,setAuthReady]=useState(false);
   const [session,setSession]=useState(null);
   const [authMode,setAuthMode]=useState("login");
@@ -369,11 +500,13 @@ export default function App() {
   const [authErr,setAuthErr]=useState("");
   const [authLoad,setAuthLoad]=useState(false);
   const [projects,setProjects]=useState([]);
+  const [tasks,setTasks]=useState([]);
   const [messages,setMessages]=useState([]);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
   const [activeProject,setActiveProject]=useState(null);
   const [showWelcome,setShowWelcome]=useState(true);
+  const [showCodex,setShowCodex]=useState(false);
   const [selectedMode,setSelectedMode]=useState("contextual");
   const [attachedImage,setAttachedImage]=useState(null);
   const [activeAgents,setActiveAgents]=useState([]);
@@ -381,53 +514,89 @@ export default function App() {
   const projRef=useRef(null);
 
   useEffect(()=>{projRef.current=activeProject;},[activeProject]);
-  useEffect(()=>{if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight;},[messages,loading]);
+  useEffect(()=>{ if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight;},[messages,loading]);
 
   useEffect(()=>{
-    try{
-      if(USE_SUPABASE){
-        const saved=sg("neura-session");
-        if(saved&&saved.refresh_token){
-          sb.refresh(saved.refresh_token).then(r=>{if(r&&r.access_token){store.uid=r.user.id;ss("neura-session",r);setSession(r);}}).catch(()=>{}).finally(()=>{setAuthReady(true);});
-          return;
+    (async()=>{
+      try{
+        if(USE_SUPABASE){
+          try{
+            const saved=await sg("neura-session");
+            if(saved&&saved.refresh_token){
+              const r=await sb.refresh(saved.refresh_token);
+              if(r&&r.access_token){store.uid=r.user.id;await ss("neura-session",r);setSession(r);}
+            }
+          }catch(e){console.warn(e);}
+        }else{
+          try{
+            const [ps,ts]=await Promise.all([store.getProjects(),store.getTasks()]);
+            setProjects(Array.isArray(ps)?ps:[]);
+            setTasks(Array.isArray(ts)?ts:[]);
+          }catch(e){console.warn(e);}
+          setSession({user:{id:"local",email:"usuario@neura.app"}});
         }
-      }else{
-        setProjects(store.getProjects());
-        setSession({user:{id:"local",email:"usuario@neura.app"}});
-      }
-    }catch (e) { alert(JSON.stringify(e)); console.error(e);console.warn(e);}
-    setAuthReady(true);
+      }catch(e){console.warn(e);}
+      finally{setAuthReady(true);}
+    })();
   },[]);
 
-  const signIn=async()=>{setAuthLoad(true);setAuthErr("");try{const r=await sb.signIn(authEmail,authPass);if(r.error){setAuthErr(r.error.message||"Error.");return;}store.uid=r.user.id;ss("neura-session",r);setSession(r);setProjects(store.getProjects());}catch{setAuthErr("Error de conexión.");}finally{setAuthLoad(false);}};
-  const signUp=async()=>{setAuthLoad(true);setAuthErr("");try{const r=await sb.signUp(authEmail,authPass);if(r.error){setAuthErr(r.error.message||"Error.");return;}setAuthErr("✓ Verificá tu email.");}catch{setAuthErr("Error de conexión.");}finally{setAuthLoad(false);}};
-  const signOut=()=>{if(session&&session.access_token)sb.signOut(session.access_token).catch(()=>{});sd("neura-session");setSession(null);setProjects([]);setMessages([]);setActiveProject(null);setShowWelcome(true);};
+  const signIn=async()=>{
+    setAuthLoad(true);setAuthErr("");
+    try{const r=await sb.signIn(authEmail,authPass);if(r.error){setAuthErr(r.error.message||"Error.");return;}store.uid=r.user.id;await ss("neura-session",r);setSession(r);const [ps,ts]=await Promise.all([store.getProjects(),store.getTasks()]);setProjects(Array.isArray(ps)?ps:[]);setTasks(Array.isArray(ts)?ts:[]);}
+    catch{setAuthErr("Error de conexión.");}finally{setAuthLoad(false);}
+  };
+  const signUp=async()=>{
+    setAuthLoad(true);setAuthErr("");
+    try{const r=await sb.signUp(authEmail,authPass);if(r.error){setAuthErr(r.error.message||"Error.");return;}setAuthErr("✓ Verificá tu email.");}
+    catch{setAuthErr("Error de conexión.");}finally{setAuthLoad(false);}
+  };
+  const signOut=async()=>{
+    if(session&&session.access_token)await sb.signOut(session.access_token).catch(()=>{});
+    await sd("neura-session");setSession(null);setProjects([]);setTasks([]);setMessages([]);setActiveProject(null);setShowWelcome(true);
+  };
 
-  const createProject=firstMsg=>{
+  const createProject=async firstMsg=>{
     const p={id:genId(),title:buildTitle(firstMsg),status:"LIVE",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
-    store.saveProject(p);
+    try{await store.saveProject(p);}catch(e){console.warn(e);}
     setProjects(prev=>[p,...prev]);projRef.current=p;setActiveProject(p);return p;
   };
-  const openProject=p=>{setActiveProject(p);projRef.current=p;setMessages(store.getMessages(p.id));setShowWelcome(false);};
-  const newChat=()=>{setActiveProject(null);projRef.current=null;setMessages([]);setShowWelcome(true);};
+
+  const openProject=async p=>{
+    setActiveProject(p);projRef.current=p;
+    try{const msgs=await store.getMessages(p.id);setMessages(Array.isArray(msgs)?msgs:[]);}catch{setMessages([]);}
+    setShowWelcome(false);
+  };
+
+  const newChat=()=>{setActiveProject(null);projRef.current=null;setMessages([]);setShowWelcome(true);setShowCodex(false);};
 
   const sendMessage=async text=>{
     const txt=(text!==undefined?text:input).trim();
     if((!txt&&!attachedImage)||loading)return;
     setInput("");setShowWelcome(false);
-    const isVis=!!attachedImage;const img=attachedImage;setAttachedImage(null);
+    const isVis=!!attachedImage;
+    const img=attachedImage;setAttachedImage(null);
+
     const userMsg={role:"user",content:txt,imagePreview:img&&img.preview?img.preview:null,_imgBase64:img&&img.base64?img.base64:null,_imgMediaType:img&&img.mediaType?img.mediaType:null,createdAt:new Date().toISOString()};
     const hist=[...messages,userMsg];
     setMessages(hist);setLoading(true);
-    const ERR={net:"⚠️ Sin conexión. Verificá tu red.",time:"⚠️ NEURA tardó demasiado. Reintentá.",lim:"⚠️ Capacidad temporal agotada. Esperá unos minutos.",auth:"⚠️ Error de autenticación.",gen:"⚠️ NEURA no pudo completar la operación. Reintentá."};
+
+    const ERR={net:"⚠️ Sin conexión. Verificá tu red e intentá nuevamente.",time:"⚠️ NEURA tardó demasiado. Reintentá.",lim:"⚠️ Capacidad temporal agotada. Esperá unos minutos.",auth:"⚠️ Error de autenticación. Recargá la app.",gen:"⚠️ NEURA no pudo completar la operación. Reintentá."};
     const addReply=c=>setMessages(p=>[...p,{role:"assistant",content:c,createdAt:new Date().toISOString()}]);
+
     let done=false;
     const safety=setTimeout(()=>{if(!done){setLoading(false);setActiveAgents([]);addReply(ERR.time);}},25000);
+
     try{
       let proj=projRef.current;
-      if(!proj&&txt){proj=createProject(txt);}
-      if(proj){store.saveMessages(proj.id,hist);store.appendMsg(proj.id,{role:"user",content:txt});}
-      const det=detectAgents(txt+(isVis?" visual design":""));setActiveAgents(det);
+      try{
+        if(!proj&&txt)proj=await createProject(txt);
+        if(proj)await store.saveMessages(proj.id,hist);
+        if(proj)await store.appendMsg(proj.id,{role:"user",content:txt});
+      }catch(e){console.warn("[N] storage:",e&&e.message);}
+
+      const det=detectAgents(txt+(isVis?" visual design":""));
+      setActiveAgents(det);
+
       const raw=hist.filter(m=>m.type!=="routes"&&(m.role==="user"||m.role==="assistant"));
       const alt=[];
       for(const m of raw){const prev=alt[alt.length-1];if(prev&&prev.role===m.role)alt[alt.length-1]=m;else alt.push(m);}
@@ -436,46 +605,132 @@ export default function App() {
         return{role:m.role,content:m.content||"..."};
       });
       if(!api.length){addReply(ERR.gen);return;}
+
       const modePrompt=MODES[selectedMode]&&MODES[selectedMode].prompt?MODES[selectedMode].prompt:"";
       const sys=modePrompt?NEURA_SYSTEM+"\n\n"+modePrompt:NEURA_SYSTEM;
+
       let res,data;
       try{
-        // In production: calls /api/chat (Vercel serverless function with API key)
-        res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body: JSON.stringify({ message: txt })});
+        res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages:api})});
         data=await res.json().catch(()=>null);
-      }catch (netErr) { alert(JSON.stringify(netErr)); console.error(netErr);console.error("[N] net:",netErr&&netErr.message);addReply(ERR.net);return;}
-      if(!res.ok||!data){const t=data&&(data.type||data.error&&data.error.type)||"";const s=res.status;if(s===401||t.includes("auth")){addReply(ERR.auth);return;}if(s===429||t.includes("limit")||t.includes("exceeded")){addReply(ERR.lim);return;}addReply(ERR.gen);return;}
-      const raw2 = data?.reply || data?.content?.[0]?.text || "";
+      }catch(netErr){console.error("[N] net:",netErr&&netErr.message);addReply(ERR.net);return;}
+
+      if(!res.ok||!data){
+        const t=data&&(data.type||data.error&&data.error.type)||"";const s=res.status;
+        if(s===401||t.includes("auth")){addReply(ERR.auth);return;}
+        if(s===429||t.includes("limit")||t.includes("exceeded")){addReply(ERR.lim);return;}
+        addReply(ERR.gen);return;
+      }
+
+      const raw2=data&&data.content&&data.content[0]&&data.content[0].text?data.content[0].text:"";
       if(!raw2){addReply(ERR.gen);return;}
+
       let aMsg={role:"assistant",content:raw2,createdAt:new Date().toISOString()};
-      if(raw2.trimStart().startsWith("{")&&raw2.includes("__neura_routes")){try{const parsed=JSON.parse(raw2.trim());if(parsed.__neura_routes===true&&Array.isArray(parsed.routes)&&parsed.routes.length)aMsg={role:"assistant",type:"routes",intent:parsed.intent||"",routes:parsed.routes,resolved:false,createdAt:new Date().toISOString()};}catch (je) { alert(JSON.stringify(je)); console.error(je);console.warn("[N] json:",je&&je.message);}}
-      const final=[...hist,aMsg];setMessages(final);
+      if(raw2.trimStart().startsWith("{")&&raw2.includes("__neura_routes")){
+        try{
+          const parsed=JSON.parse(raw2.trim());
+          if(parsed.__neura_routes===true&&Array.isArray(parsed.routes)&&parsed.routes.length)
+            aMsg={role:"assistant",type:"routes",intent:parsed.intent||"",routes:parsed.routes,resolved:false,createdAt:new Date().toISOString()};
+        }catch(je){console.warn("[N] json:",je&&je.message);}
+      }
+
+      const final=[...hist,aMsg];
+      setMessages(final);
       const all=[...new Set([...det,...detectAgents(raw2)])];setActiveAgents(all);
-      if(proj){store.saveMessages(proj.id,final);if(!aMsg.type)store.appendMsg(proj.id,{role:"assistant",content:raw2});store.updateProject(proj.id,{status:"LIVE",lastSummary:raw2.replace(/[#*●→↓━]/g,"").trim().slice(0,80),activeAgents:all});}
-    }catch (e) { alert(JSON.stringify(e)); console.error(e);console.error("[N]:",e&&e.message);addReply(ERR.gen);}
+
+      try{
+        if(proj){
+          await store.saveMessages(proj.id,final);
+          if(!aMsg.type)await store.appendMsg(proj.id,{role:"assistant",content:raw2});
+          await store.updateProject(proj.id,{status:"LIVE",lastSummary:raw2.replace(/[#*●→↓━]/g,"").trim().slice(0,80),activeAgents:all});
+        }
+      }catch(e){console.warn("[N] save:",e&&e.message);}
+
+    }catch(e){console.error("[N]:",e&&e.message);addReply(ERR.gen);}
     finally{done=true;clearTimeout(safety);setLoading(false);setTimeout(()=>setActiveAgents([]),5000);}
   };
 
-  const selectRoute=(routeMsg,route)=>{setMessages(p=>p.map(m=>m===routeMsg?{...m,resolved:true,resolvedLabel:route.label}:m));sendMessage("Enfoque: "+route.label+" — "+route.description+". Procedé.");};
+  const selectRoute=(routeMsg,route)=>{
+    setMessages(p=>p.map(m=>m===routeMsg?{...m,resolved:true,resolvedLabel:route.label}:m));
+    sendMessage("Enfoque: "+route.label+" — "+route.description+". Procedé.");
+  };
 
-  if(!authReady)return(<><style>{CSS}</style><div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#050713"}}><div style={{fontFamily:"'Orbitron',monospace",fontSize:24,fontWeight:700,color:"#00E5FF",letterSpacing:".15em",animation:"blink 1.5s ease-in-out infinite"}}>NEURA</div></div></>);
+  if(!authReady)return(
+    <><style>{CSS}</style>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#050713"}}>
+      <div style={{fontFamily:"'Orbitron',monospace",fontSize:24,fontWeight:700,color:"#00E5FF",letterSpacing:".15em",animation:"blink 1.5s ease-in-out infinite"}}>NEURA</div>
+    </div></>
+  );
 
-  if(USE_SUPABASE&&!session)return(<><style>{CSS}</style><div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#050713"}}><div style={{width:"100%",maxWidth:380,padding:32,borderRadius:20,background:"rgba(255,255,255,.04)",border:"1px solid rgba(0,229,255,.1)",backdropFilter:"blur(20px)"}}><div style={{textAlign:"center",marginBottom:24}}><Logo size={36}/><br/><div style={{fontFamily:"'Orbitron',monospace",fontWeight:700,fontSize:15,letterSpacing:".25em",color:"#F4F7FF",marginTop:10}}>NEURA</div><div style={{fontSize:11,color:"#606880",fontFamily:"'DM Sans',sans-serif",marginTop:4}}>{authMode==="login"?"INICIAR SESIÓN":"CREAR CUENTA"}</div></div><input type="email" placeholder="Email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")(authMode==="login"?signIn:signUp)();}} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",marginBottom:10,display:"block"}}/><input type="password" placeholder="Contraseña" value={authPass} onChange={e=>setAuthPass(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")(authMode==="login"?signIn:signUp)();}} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",marginBottom:10,display:"block"}}/>{authErr&&<div style={{fontSize:12,color:authErr.startsWith("✓")?"#00E5FF":"#ff6b6b",fontFamily:"'DM Sans',sans-serif",marginBottom:10,textAlign:"center"}}>{authErr}</div>}<button onClick={authMode==="login"?signIn:signUp} disabled={authLoad} style={{width:"100%",padding:13,borderRadius:10,background:"linear-gradient(135deg,#35D8FF,#7B4DFF)",color:"#fff",fontSize:14,fontFamily:"'Syne',sans-serif",fontWeight:700,letterSpacing:".08em",opacity:authLoad?.5:1,marginBottom:10,cursor:"pointer"}}>{authLoad?"...":(authMode==="login"?"INGRESAR":"CREAR CUENTA")}</button><button onClick={()=>{setAuthMode(m=>m==="login"?"register":"login");setAuthErr("");}} style={{width:"100%",fontSize:12,color:"#606880",fontFamily:"'DM Sans',sans-serif",textAlign:"center",padding:6,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#00E5FF"} onMouseLeave={e=>e.currentTarget.style.color="#606880"}>{authMode==="login"?"¿No tenés cuenta? Registrate":"¿Ya tenés cuenta? Ingresá"}</button></div></div></>);
+  if(USE_SUPABASE&&!session)return(
+    <><style>{CSS}</style>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#050713"}}>
+      <div style={{width:"100%",maxWidth:380,padding:32,borderRadius:20,background:"rgba(255,255,255,.04)",border:"1px solid rgba(0,229,255,.1)",backdropFilter:"blur(20px)"}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <Logo size={36}/><br/>
+          <div style={{fontFamily:"'Orbitron',monospace",fontWeight:700,fontSize:15,letterSpacing:".25em",color:"#F4F7FF",marginTop:10}}>NEURA</div>
+          <div style={{fontSize:11,color:"#606880",fontFamily:"'DM Sans',sans-serif",marginTop:4}}>{authMode==="login"?"INICIAR SESIÓN":"CREAR CUENTA"}</div>
+        </div>
+        <input type="email" placeholder="Email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")(authMode==="login"?signIn:signUp)();}} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",marginBottom:10,display:"block"}}/>
+        <input type="password" placeholder="Contraseña" value={authPass} onChange={e=>setAuthPass(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")(authMode==="login"?signIn:signUp)();}} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",marginBottom:10,display:"block"}}/>
+        {authErr&&<div style={{fontSize:12,color:authErr.startsWith("✓")?"#00E5FF":"#ff6b6b",fontFamily:"'DM Sans',sans-serif",marginBottom:10,textAlign:"center"}}>{authErr}</div>}
+        <button onClick={authMode==="login"?signIn:signUp} disabled={authLoad} style={{width:"100%",padding:13,borderRadius:10,background:"linear-gradient(135deg,#35D8FF,#7B4DFF)",color:"#fff",fontSize:14,fontFamily:"'Syne',sans-serif",fontWeight:700,letterSpacing:".08em",opacity:authLoad?.5:1,marginBottom:10,cursor:"pointer"}}>{authLoad?"...":(authMode==="login"?"INGRESAR":"CREAR CUENTA")}</button>
+        <button onClick={()=>{setAuthMode(m=>m==="login"?"register":"login");setAuthErr("");}} style={{width:"100%",fontSize:12,color:"#606880",fontFamily:"'DM Sans',sans-serif",textAlign:"center",padding:6,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#00E5FF"} onMouseLeave={e=>e.currentTarget.style.color="#606880"}>{authMode==="login"?"¿No tenés cuenta? Registrate":"¿Ya tenés cuenta? Ingresá"}</button>
+      </div>
+    </div></>
+  );
 
   const mode=MODES[selectedMode];
-  return(<><style>{CSS}</style><div style={{display:"flex",height:"100vh",overflow:"hidden",background:"#050713",color:"#E8EEF8"}}><Sidebar onNew={newChat} projects={projects} onOpen={openProject} onSignOut={USE_SUPABASE?signOut:null} session={session}/><div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,position:"relative"}}>{showWelcome?(<Home onSend={(t,img)=>{if(img){setAttachedImage(img);setTimeout(()=>sendMessage(t||""),50);}else sendMessage(t);}} selectedMode={selectedMode} onMode={setSelectedMode}/>):(<><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",height:50,background:"rgba(5,7,19,.95)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,229,255,.07)",flexShrink:0}}><div style={{display:"flex",alignItems:"center",gap:12}}><button onClick={newChat} style={{display:"flex",alignItems:"center",gap:6,color:"#4050a0",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#8090d0"} onMouseLeave={e=>e.currentTarget.style.color="#4050a0"}><I.Back/>Inicio</button>{activeProject&&<><div style={{width:1,height:14,background:"rgba(255,255,255,.06)"}}/><span style={{fontSize:11,fontFamily:"'Syne',sans-serif",letterSpacing:".07em",color:"#00E5FF",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProject.title}</span></>}</div><div style={{display:"flex",alignItems:"center",gap:8}}>{activeAgents.slice(0,3).map(a=><div key={a} style={{fontSize:9,fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#00E5FF",letterSpacing:".06em",padding:"2px 7px",borderRadius:4,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.2)"}}>{a.toUpperCase()}</div>)}<div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 9px",borderRadius:5,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.12)"}}><div style={{width:4,height:4,borderRadius:"50%",background:"#00E5FF",opacity:.7}}/><span style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:"#00E5FF",opacity:.8}}>{mode.label.toUpperCase()}</span></div></div></div><div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"24px 20px",scrollbarWidth:"none",background:"#050713"}}><div style={{maxWidth:760,margin:"0 auto"}}>{messages.map((m,i)=>m.type==="routes"?<Routes key={i} msg={m} onSelect={r=>selectRoute(m,r)}/>:<Bubble key={i} msg={m}/>)}{loading&&<ThinkingState/>}</div></div><div style={{padding:"12px 20px 16px",background:"rgba(5,7,19,.96)",backdropFilter:"blur(20px)",borderTop:"1px solid rgba(0,229,255,.07)",flexShrink:0}}><div style={{maxWidth:760,margin:"0 auto"}}>{attachedImage&&(<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"7px 12px",borderRadius:9,background:"rgba(255,107,107,.05)",border:"1px solid rgba(255,107,107,.14)"}}><img src={attachedImage.preview} alt="" style={{width:26,height:26,objectFit:"cover",borderRadius:5}}/><span style={{flex:1,fontSize:10,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:"#ff6b6b"}}>ASSET EN COLA</span><button onClick={()=>setAttachedImage(null)} style={{color:"#ff6b6b",display:"flex",cursor:"pointer"}}><I.Close/></button></div>)}<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:14,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.07)"}}><textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}} placeholder="Decime qué querés lograr..." rows={1} disabled={loading} style={{flex:1,background:"transparent",border:"none",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",resize:"none",lineHeight:1.6,maxHeight:120,overflow:"auto",opacity:loading?.5:1,cursor:"text"}} onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}/><button onClick={()=>sendMessage()} disabled={(!input.trim()&&!attachedImage)||loading} style={{width:34,height:34,borderRadius:9,background:(!input.trim()&&!attachedImage)||loading?"rgba(255,255,255,.05)":"linear-gradient(135deg,#35D8FF,#7B4DFF)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s ease",opacity:(!input.trim()&&!attachedImage)||loading?.2:1,color:"#fff",boxShadow:input.trim()?"0 0 16px rgba(0,229,255,.3)":"none",cursor:"pointer"}}><I.Send/></button></div><div style={{textAlign:"center",marginTop:6,fontSize:9,color:"#141620",fontFamily:"'Syne',sans-serif",letterSpacing:".12em"}}>NEURA · SISTEMA OPERATIVO COGNITIVO</div></div></div></>)}</div></div></>);
+
+  return(
+    <><style>{CSS}</style>
+    <div style={{display:"flex",height:"100vh",overflow:"hidden",background:"#050713",color:"#E8EEF8"}}>
+      <Sidebar onNew={newChat} projects={projects} tasks={tasks} onOpen={openProject} onSignOut={USE_SUPABASE?signOut:null} session={session} onOpenCodex={()=>{setShowCodex(true);setShowWelcome(false);}}/>
+      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,position:"relative"}}>
+        {showCodex?(
+          <CodexWorkspace onBack={newChat}/>
+        ):showWelcome?(
+          <Home onSend={(t,img)=>{if(img){setAttachedImage(img);setTimeout(()=>sendMessage(t||""),50);}else sendMessage(t);}} selectedMode={selectedMode} onMode={setSelectedMode} isThinking={loading}/>
+        ):(
+          <>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",height:50,background:"rgba(5,7,19,.95)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,229,255,.07)",flexShrink:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <button onClick={newChat} style={{display:"flex",alignItems:"center",gap:6,color:"#4050a0",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#8090d0"} onMouseLeave={e=>e.currentTarget.style.color="#4050a0"}><I.Back/>Inicio</button>
+                {activeProject&&<><div style={{width:1,height:14,background:"rgba(255,255,255,.06)"}}/><span style={{fontSize:11,fontFamily:"'Syne',sans-serif",letterSpacing:".07em",color:"#00E5FF",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProject.title}</span></>}
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                {activeAgents.slice(0,3).map(a=><div key={a} style={{fontSize:9,fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#00E5FF",letterSpacing:".06em",padding:"2px 7px",borderRadius:4,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.2)"}}>{a.toUpperCase()}</div>)}
+                <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 9px",borderRadius:5,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.12)"}}>
+                  <div style={{width:4,height:4,borderRadius:"50%",background:"#00E5FF",opacity:.7}}/>
+                  <span style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:"#00E5FF",opacity:.8}}>{mode.label.toUpperCase()}</span>
+                </div>
+              </div>
+            </div>
+            <div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"24px 20px",scrollbarWidth:"none",background:"#050713"}}>
+              <div style={{maxWidth:760,margin:"0 auto"}}>
+                {messages.map((m,i)=>m.type==="routes"?<Routes key={i} msg={m} onSelect={r=>selectRoute(m,r)}/>:<Bubble key={i} msg={m}/>)}
+                {loading&&<ThinkingState/>}
+              </div>
+            </div>
+            <div style={{padding:"12px 20px 16px",background:"rgba(5,7,19,.96)",backdropFilter:"blur(20px)",borderTop:"1px solid rgba(0,229,255,.07)",flexShrink:0}}>
+              <div style={{maxWidth:760,margin:"0 auto"}}>
+                {attachedImage&&(
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"7px 12px",borderRadius:9,background:"rgba(255,107,107,.05)",border:"1px solid rgba(255,107,107,.14)"}}>
+                    <img src={attachedImage.preview} alt="" style={{width:26,height:26,objectFit:"cover",borderRadius:5}}/>
+                    <span style={{flex:1,fontSize:10,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:"#ff6b6b"}}>ASSET EN COLA</span>
+                    <button onClick={()=>setAttachedImage(null)} style={{color:"#ff6b6b",display:"flex",cursor:"pointer"}}><I.Close/></button>
+                  </div>
+                )}
+                <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:14,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.07)"}}>
+                  <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}} placeholder="Decime qué querés lograr..." rows={1} disabled={loading} style={{flex:1,background:"transparent",border:"none",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",resize:"none",lineHeight:1.6,maxHeight:120,overflow:"auto",opacity:loading?.5:1,cursor:"text"}} onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}/>
+                  <button onClick={()=>sendMessage()} disabled={(!input.trim()&&!attachedImage)||loading} style={{width:34,height:34,borderRadius:9,background:(!input.trim()&&!attachedImage)||loading?"rgba(255,255,255,.05)":"linear-gradient(135deg,#35D8FF,#7B4DFF)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s ease",opacity:(!input.trim()&&!attachedImage)||loading?.2:1,color:"#fff",boxShadow:input.trim()?"0 0 16px rgba(0,229,255,.3)":"none",cursor:"pointer"}}><I.Send/></button>
+                </div>
+                <div style={{textAlign:"center",marginTop:6,fontSize:9,color:"#141620",fontFamily:"'Syne',sans-serif",letterSpacing:".12em"}}>NEURA · SISTEMA OPERATIVO COGNITIVO</div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div></>
+  );
 }
-
-
-
-
-
-
-
-<style>{`@media (max-width: 768px){body{overflow:hidden!important;}div[style*='width:232px'],div[style*='width: 232px']{display:none!important;}textarea{font-size:16px!important;}button{min-height:34px;}}`}</style>
-
-
-
-
-
-
