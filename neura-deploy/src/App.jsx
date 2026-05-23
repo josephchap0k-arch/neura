@@ -2,8 +2,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL      = "https://qrjabnoghrjiukkdbgap.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
-const USE_SUPABASE      = !SUPABASE_ANON_KEY.startsWith("YOUR_");
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyamFibm9naHJqaXVra2RiZ2FwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNjMzNTgsImV4cCI6MjA5NDYzOTM1OH0.4YALioQf23eDdPnC4tC6BSFmj-FsnKXFnbDFRGdLUAM";
+const USE_SUPABASE      = true;
+const supabase          = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const supabase          = createClient(SUPABASE_URL, USE_SUPABASE ? SUPABASE_ANON_KEY : "placeholder-key-x7k9");
 const SIDEBAR_W         = 232;
 
