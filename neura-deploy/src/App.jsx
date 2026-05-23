@@ -664,7 +664,7 @@ export default function NEURA() {
         addReply(ERR.gen);return;
       }
 
-      const raw2=data&&data.content&&data.content[0]&&data.content[0].text?data.content[0].text:"";
+      const raw2=data&&data.reply?data.reply:"";
       if(!raw2){addReply(ERR.gen);return;}
 
       let aMsg={role:"assistant",content:raw2,createdAt:new Date().toISOString()};
