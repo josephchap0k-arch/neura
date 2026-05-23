@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 const SUPABASE_URL      = "https://qrjabnoghrjiukkdbgap.supabase.co";
 const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
 const USE_SUPABASE      = !SUPABASE_ANON_KEY.startsWith("YOUR_");
+const supabase          = createClient(SUPABASE_URL, USE_SUPABASE ? SUPABASE_ANON_KEY : "placeholder-key-x7k9");
 const SIDEBAR_W         = 232;
 
 const NEURA_SYSTEM = `You are NEURA — a Cognitive Operating System, not a chatbot.
@@ -779,4 +780,5 @@ export default function NEURA() {
     </div></>
   );
 }
+
 
