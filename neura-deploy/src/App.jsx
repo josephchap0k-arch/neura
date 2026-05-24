@@ -16,10 +16,20 @@ LANGUAGE: Auto-detect. Respond in same language. Spanish LATAM / Argentine voseo
 RULE: NEURA builds, orchestrates and optimizes operational execution systems.`;
 
 const MODES = {
-  contextual:{label:"Contextual",sub:"Memoria activa",   color:"#00E5FF",prompt:"MODO CONTEXTUAL: Priorizá memoria y continuidad entre operaciones."},
-  learner:   {label:"Aprendiz",  sub:"Enseñanza",        color:"#4488ff",prompt:"MODO APRENDIZ: Respuestas pedagógicas, paso a paso, con ejemplos."},
-  expert:    {label:"Experto",   sub:"Precisión",         color:"#aa44ff",prompt:"MODO EXPERTO: Directo al punto. Sin preamble. Solo ejecución."},
-  master:    {label:"Maestro",   sub:"Visión sistémica",  color:"#00E5FF",prompt:"MODO MAESTRO: Pensamiento sistémico, visión global, conexiones no obvias."},
+  contextual:{label:"Contextual",sub:"Memoria activa",color:"#00E5FF",prompt:"MODO CONTEXTUAL: Priorizá memoria y continuidad entre operaciones."},
+  estratega: {label:"Estratega",  sub:"Visión sistémica",   color:"#818cf8",prompt:"MODO ESTRATEGA: Pensamiento sistémico, visión global, decisiones de alto impacto. Actuá como socio estratégico senior."},
+  operador:  {label:"Operador",   sub:"Ejecución directa",  color:"#34d399",prompt:"MODO OPERADOR: Ejecución directa, sin rodeos. Dame tareas concretas, yo las ejecuto."},
+  ventas:    {label:"Ventas",     sub:"Pipelines & cierre",  color:"#f59e0b",prompt:"MODO VENTAS: Optimizá pipelines, cerrá deals, generá propuestas y argumentos de venta. Actuá como director comercial."},
+  growth:    {label:"Growth",     sub:"Adquisición & escala",color:"#ec4899",prompt:"MODO GROWTH: Estrategias de adquisición, retención, viralizad y escala. Métricas y experimentos."},
+  finanzas:  {label:"Finanzas",   sub:"Flujo & proyección",  color:"#a3e635",prompt:"MODO FINANZAS: Flujo de caja, proyecciones, costos, márgenes. Pensá como CFO."},
+  contenido: {label:"Contenido",  sub:"Narrativa & copy",    color:"#67e8f9",prompt:"MODO CONTENIDO: Copy persuasivo, narrativas de marca, contenido que convierte."},
+  producto:  {label:"Producto",   sub:"UX & roadmap",        color:"#c084fc",prompt:"MODO PRODUCTO: UX, roadmap, features, feedback de usuarios. Actuá como CPO."},
+  research:  {label:"Research",   sub:"Análisis & datos",    color:"#fb923c",prompt:"MODO RESEARCH: Análisis profundo, benchmarks, datos de mercado, insights accionables."},
+  branding:  {label:"Branding",   sub:"Identidad & posición", color:"#f472b6",prompt:"MODO BRANDING: Identidad de marca, posicionamiento, diferenciación competitiva."},
+  legal:     {label:"Legal",      sub:"Contratos & riesgo",  color:"#94a3b8",prompt:"MODO LEGAL: Revisión de contratos, riesgos legales, estructura societaria. Sin asesoramiento formal."},
+  arquitecto:{label:"Arquitecto", sub:"Stack & sistemas",    color:"#22d3ee",prompt:"MODO ARQUITECTO: Arquitectura de sistemas, stack tecnológico, decisiones técnicas de alto nivel."},
+  soporte:   {label:"Soporte",    sub:"Retención & CX",      color:"#4ade80",prompt:"MODO SOPORTE: Customer experience, retención, resolución de conflictos, NPS."},
+  master:    {label:"Maestro",    sub:"Orquestación total",  color:"#00E5FF",prompt:"MODO MAESTRO: Pensamiento sistémico, visión global, conexión de todos los sistemas."},
 };
 
 const I = {
@@ -301,11 +311,6 @@ function Sidebar({onNew,projects=[],tasks=[],onOpen,onSignOut,session,onOpenCode
             <span style={{opacity:.55,flexShrink:0}}><Ic/></span><span>{l}</span>
           </button>
         ))}
-        {/* CODEX — vista de automatización */}
-        <button onClick={onOpenCodex} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:7,background:"rgba(123,77,255,.08)",border:"1px solid rgba(123,77,255,.2)",color:"#B45CFF",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .15s ease",textAlign:"left",cursor:"pointer",marginTop:4}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(123,77,255,.14)";e.currentTarget.style.color="#c060ff";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(123,77,255,.08)";e.currentTarget.style.color="#B45CFF";}}>
-          <span style={{opacity:.8,flexShrink:0,fontSize:13}}>⚡</span><span style={{fontWeight:500}}>CODEX</span>
-          <span style={{marginLeft:"auto",fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".08em",opacity:.6}}>AUTO</span>
-        </button>
       </div>
       <div style={{height:1,background:"rgba(255,255,255,.04)",margin:"6px 14px",flexShrink:0}}/>
       <div style={{flex:1,overflowY:"auto",scrollbarWidth:"none",minHeight:0,padding:"0 4px"}}>
@@ -687,9 +692,7 @@ export default function NEURA() {
     <div style={{display:"flex",height:"100vh",overflow:"hidden",background:"#050713",color:"#E8EEF8"}}>
       <Sidebar onNew={newChat} projects={projects} tasks={tasks} onOpen={openProject} onSignOut={USE_SUPABASE?signOut:null} session={session} onOpenCodex={()=>{setShowCodex(true);setShowWelcome(false);}}/>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,position:"relative"}}>
-        {showCodex?(
-          <CodexWorkspace onBack={newChat}/>
-        ):showWelcome?(
+        {showWelcome?(
           <Home onSend={(t,img)=>{if(img){setAttachedImage(img);setTimeout(()=>sendMessage(t||""),50);}else sendMessage(t);}} selectedMode={selectedMode} onMode={setSelectedMode} isThinking={loading}/>
         ):(
           <>
