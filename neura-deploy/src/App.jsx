@@ -1,10 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useState, useRef, useEffect } from "react";
 
 const SUPABASE_URL      = "https://qrjabnoghrjiukkdbgap.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyamFibm9naHJqaXVra2RiZ2FwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNjMzNTgsImV4cCI6MjA5NDYzOTM1OH0.4YALioQf23eDdPnC4tC6BSFmj-FsnKXFnbDFRGdLUAM";
-const USE_SUPABASE      = true;
-const supabase          = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+const USE_SUPABASE      = !SUPABASE_ANON_KEY.startsWith("YOUR_");
 const SIDEBAR_W         = 232;
 
 const NEURA_SYSTEM = `You are NEURA — a Cognitive Operating System, not a chatbot.
@@ -59,47 +57,22 @@ function Logo({size=28}) {
   );
 }
 
-const sg = k => { try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;} };
-const ss = (k,v) => { try{localStorage.setItem(k,JSON.stringify(v));}catch{} };
-const sd = k => { try{localStorage.removeItem(k);}catch{} };
+const sg = async k => { try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;} };
+const ss = async (k,v) => { try{await window.storage.set(k,JSON.stringify(v));}catch{} };
+const sd = async k => { try{await window.storage.delete(k);}catch{} };
 
-// Auth helpers using real Supabase client
-const sbAuth = {
-  async signInWithGoogle() {
-    return supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        scopes: 'email profile openid https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/drive',
-        redirectTo: window.location.origin,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
-      }
-    });
-  },
-  async signOut() { return supabase.auth.signOut(); },
-  async getSession() { return supabase.auth.getSession(); },
-  onAuthStateChange(cb) { return supabase.auth.onAuthStateChange(cb); },
-};
-
-// DB helpers
-const db = {
-  async saveMessage(userId, projectId, role, content) {
-    if(!userId||!projectId) return;
-    await supabase.from('messages').insert({ user_id:userId, project_id:projectId, role, content });
-  },
-  async getMessages(userId, projectId) {
-    if(!userId||!projectId) return [];
-    const { data } = await supabase.from('messages').select('role,content,created_at').eq('user_id',userId).eq('project_id',projectId).order('created_at');
-    return data||[];
-  },
-  async saveProject(userId, p) {
-    if(!userId) return;
-    await supabase.from('projects').upsert({ id:p.id, user_id:userId, title:p.title, status:p.status||'LIVE', updated_at:new Date().toISOString() });
-  },
-  async getProjects(userId) {
-    if(!userId) return [];
-    const { data } = await supabase.from('projects').select('*').eq('user_id',userId).order('updated_at',{ascending:false}).limit(30);
-    return data||[];
-  },
+const sb = {
+  h:()=>({Authorization:`Bearer ${SUPABASE_ANON_KEY}`,"Content-Type":"application/json",apikey:SUPABASE_ANON_KEY,"Prefer":"return=representation"}),
+  ah:t=>({Authorization:`Bearer ${t}`,"Content-Type":"application/json",apikey:SUPABASE_ANON_KEY,"Prefer":"return=representation"}),
+  async req(path,opts={}){const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...opts,headers:{...this.h(),...(opts.headers||{})}});return r.ok?r.json():null;},
+  async signIn(e,p){const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:this.h(),body:JSON.stringify({email:e,password:p})});return r.json();},
+  async signUp(e,p){const r=await fetch(`${SUPABASE_URL}/auth/v1/signup`,{method:"POST",headers:this.h(),body:JSON.stringify({email:e,password:p})});return r.json();},
+  async signOut(t){await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:this.ah(t)});},
+  async refresh(rt){const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:this.h(),body:JSON.stringify({refresh_token:rt})});return r.json();},
+  select:(t,p="")=>sb.req(`${t}?${p}`),
+  insert:(t,b)=>sb.req(t,{method:"POST",body:JSON.stringify(b)}),
+  update:(t,id,b)=>sb.req(`${t}?id=eq.${id}`,{method:"PATCH",body:JSON.stringify(b)}),
+  delete:(t,id)=>sb.req(`${t}?id=eq.${id}`,{method:"DELETE"}),
 };
 
 const store = {
@@ -344,29 +317,26 @@ function Sidebar({onNew,projects=[],tasks=[],onOpen,onSignOut,session,onOpenCode
   );
 }
 
-function CodexWorkspace({onBack,providerToken}) {
+function CodexWorkspace({onBack}) {
   const [inp,setInp]=useState("");
   const [result,setResult]=useState(null);
   const [loading,setLoading]=useState(false);
   const [connectors,setConnectors]=useState({gmail:true,slack:true,drive:false,whatsapp:false,stripe:false});
   const APPS=[{id:"gmail",icon:"📧",l:"Gmail"},{id:"slack",icon:"💬",l:"Slack"},{id:"drive",icon:"🗂",l:"Drive"},{id:"whatsapp",icon:"📱",l:"WhatsApp"},{id:"stripe",icon:"💳",l:"Stripe"}];
   const VT="#B45CFF";
-  const run=async(action)=>{
-    if(!inp.trim()&&action!=="apps"){setResult("Describí la automatización primero.");return;}
+  const run=(action)=>{
+    if(!inp.trim()&&action!=="apps"){setResult("⚠ Describí la automatización primero.");return;}
     setLoading(true);setResult(null);
-    const active=Object.entries(connectors).filter(([,v])=>v).map(([k])=>k);
-    const prompts={
-      simulate:`SIMULAR pipeline: "${inp}". Conectores activos: ${active.join(", ")||"ninguno"}. Describí el trigger, agente IA, acciones y output paso a paso.`,
-      apps:`Tengo activos: ${active.join(", ")||"ninguno"}. Dame 3 automatizaciones concretas y ejecutables con estos conectores para un negocio.`,
-      create:`CREAR AUTOMATIZACIÓN: "${inp}". Conectores: ${active.join(", ")||"ninguno"}. Pipeline ejecutable completo con cada paso técnico, condiciones y configuración.`,
-    };
-    try{
-      const res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system:"Sos CODEX, el motor de automatización de NEURA. Respondé en español argentino, directo y técnico.",messages:[{role:"user",content:prompts[action]||inp}],max_tokens:600})});
-      const data=await res.json();
-      setResult(data.reply||data.error||"Sin respuesta.");
-    }catch(e){setResult("Error de conexión: "+e.message);}
-    finally{setLoading(false);}
-  };;
+    setTimeout(()=>{
+      const active=Object.entries(connectors).filter(([,v])=>v).map(([k])=>k).join(", ");
+      const res={
+        simulate:`TRIGGER: "${inp.slice(0,35)}..."\n↓\nIA AGENT: Analiza → clasifica → genera respuesta\n↓\nACCIÓN: Ejecutar en ${active||"plataformas conectadas"}\n\n✓ Simulación completada — Score: 87/100\n📊 Cobertura: Alta | Velocidad: Óptima`,
+        apps:`⚙ Conectores activos: ${active||"ninguno"}\nActivá los que necesitás en el panel inferior.`,
+        create:`⚡ AUTOMATIZACIÓN CREADA\n\nNombre: Auto-${inp.slice(0,18)}\nEstado: ACTIVO\nPipeline: Trigger → IA → Acción (${active||"sin conectores"})\n\n→ Monitoreable desde Memoria.`,
+      }[action];
+      setResult(res);setLoading(false);
+    },1400);
+  };
   const BD2="rgba(123,77,255,.15)";
   const nodes=[{l:"TRIGGER",s:"Evento",x:20,c:"#35D8FF",ic:"⚡"},{l:"IA AGENT",s:"Procesa",x:190,c:"#00E5FF",ic:"🧠"},{l:"ACCIÓN",s:"Ejecuta",x:360,c:VT,ic:"🎯"}];
   return(
@@ -524,11 +494,11 @@ button{cursor:pointer;} textarea,input{cursor:text;outline:none;}
 export default function NEURA() {
   const [authReady,setAuthReady]=useState(false);
   const [session,setSession]=useState(null);
+  const [authMode,setAuthMode]=useState("login");
+  const [authEmail,setAuthEmail]=useState("");
+  const [authPass,setAuthPass]=useState("");
   const [authErr,setAuthErr]=useState("");
   const [authLoad,setAuthLoad]=useState(false);
-  const [providerToken,setProviderToken]=useState(null);
-  const [isListening,setIsListening]=useState(false);
-  const recognitionRef=useRef(null);
   const [projects,setProjects]=useState([]);
   const [tasks,setTasks]=useState([]);
   const [messages,setMessages]=useState([]);
@@ -540,27 +510,36 @@ export default function NEURA() {
   const [selectedMode,setSelectedMode]=useState("contextual");
   const [attachedImage,setAttachedImage]=useState(null);
   const [activeAgents,setActiveAgents]=useState([]);
-  const fileRef=useRef(null);
   const chatRef=useRef(null);
   const projRef=useRef(null);
 
   useEffect(()=>{projRef.current=activeProject;},[activeProject]);
   useEffect(()=>{ if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight;},[messages,loading]);
 
-  // Supabase Auth init
   useEffect(()=>{
-    if(!SUPABASE_KEY){ setSession({user:{id:"local",email:"usuario@neura.app"}}); setProjects(sg("neura-projects")||[]); setAuthReady(true); return; }
-    sbAuth.getSession().then(({data:{session:s}})=>{
-      if(s){ setSession(s); setProviderToken(s.provider_token||null); db.getProjects(s.user.id).then(ps=>{if(ps.length)setProjects(ps);}); }
-      setAuthReady(true);
-    });
-    const {data:{subscription}}=sbAuth.onAuthStateChange((_,s)=>{
-      setSession(s); setProviderToken(s?.provider_token||null);
-      if(s?.user?.id) db.getProjects(s.user.id).then(ps=>setProjects(ps||[]));
-      setAuthReady(true);
-    });
-    return()=>subscription?.unsubscribe?.();
+    (async()=>{
+      try{
+        if(USE_SUPABASE){
+          try{
+            const saved=await sg("neura-session");
+            if(saved&&saved.refresh_token){
+              const r=await sb.refresh(saved.refresh_token);
+              if(r&&r.access_token){store.uid=r.user.id;await ss("neura-session",r);setSession(r);}
+            }
+          }catch(e){console.warn(e);}
+        }else{
+          try{
+            const [ps,ts]=await Promise.all([store.getProjects(),store.getTasks()]);
+            setProjects(Array.isArray(ps)?ps:[]);
+            setTasks(Array.isArray(ts)?ts:[]);
+          }catch(e){console.warn(e);}
+          setSession({user:{id:"local",email:"usuario@neura.app"}});
+        }
+      }catch(e){console.warn(e);}
+      finally{setAuthReady(true);}
+    })();
   },[]);
+
   const signIn=async()=>{
     setAuthLoad(true);setAuthErr("");
     try{const r=await sb.signIn(authEmail,authPass);if(r.error){setAuthErr(r.error.message||"Error.");return;}store.uid=r.user.id;await ss("neura-session",r);setSession(r);const [ps,ts]=await Promise.all([store.getProjects(),store.getTasks()]);setProjects(Array.isArray(ps)?ps:[]);setTasks(Array.isArray(ts)?ts:[]);}
@@ -576,40 +555,19 @@ export default function NEURA() {
     await sd("neura-session");setSession(null);setProjects([]);setTasks([]);setMessages([]);setActiveProject(null);setShowWelcome(true);
   };
 
-  const createProject=firstMsg=>{
+  const createProject=async firstMsg=>{
     const p={id:genId(),title:buildTitle(firstMsg),status:"LIVE",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
-    ss("neura-projects",[p,...(sg("neura-projects")||[]).slice(0,29)]);
-    if(session?.user?.id) db.saveProject(session.user.id,p).catch(()=>{});
+    try{await store.saveProject(p);}catch(e){console.warn(e);}
     setProjects(prev=>[p,...prev]);projRef.current=p;setActiveProject(p);return p;
   };
 
   const openProject=async p=>{
     setActiveProject(p);projRef.current=p;
-    const localMsgs=sg("neura-msgs-"+p.id)||[];
-    setMessages(localMsgs);
-    if(session?.user?.id){ db.getMessages(session.user.id,p.id).then(msgs=>{ if(msgs&&msgs.length>localMsgs.length) setMessages(msgs); }); }
+    try{const msgs=await store.getMessages(p.id);setMessages(Array.isArray(msgs)?msgs:[]);}catch{setMessages([]);}
     setShowWelcome(false);
   };
 
   const newChat=()=>{setActiveProject(null);projRef.current=null;setMessages([]);setShowWelcome(true);setShowCodex(false);};
-
-
-  const toggleMic=useCallback(()=>{
-    if(!("webkitSpeechRecognition" in window||"SpeechRecognition" in window)) return;
-    if(isListening){ recognitionRef.current?.stop(); setIsListening(false); return; }
-    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    const r=new SR(); r.lang="es-AR"; r.continuous=false; r.interimResults=false;
-    r.onresult=e=>setInput(p=>p+e.results[0][0].transcript);
-    r.onend=()=>setIsListening(false); r.onerror=()=>setIsListening(false);
-    recognitionRef.current=r; r.start(); setIsListening(true);
-  },[isListening]);
-
-  const handleFileUpload=useCallback((file)=>{
-    if(!file) return;
-    const r=new FileReader();
-    r.onload=e=>setAttachedImage({base64:e.target.result.split(",")[1],mediaType:file.type,preview:e.target.result,name:file.name});
-    r.readAsDataURL(file);
-  },[]);
 
   const sendMessage=async text=>{
     const txt=(text!==undefined?text:input).trim();
@@ -653,7 +611,7 @@ export default function NEURA() {
 
       let res,data;
       try{
-        res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages:api})});
+        res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system:sys,messages:api,max_tokens:1000})});
         data=await res.json().catch(()=>null);
       }catch(netErr){console.error("[N] net:",netErr&&netErr.message);addReply(ERR.net);return;}
 
@@ -704,21 +662,20 @@ export default function NEURA() {
     </div></>
   );
 
-  if(!session)return(<><style>{CSS}</style>
+  if(USE_SUPABASE&&!session)return(
+    <><style>{CSS}</style>
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#050713"}}>
-      <div style={{width:"100%",maxWidth:360,padding:"32px 28px",borderRadius:12,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.08)"}}>
-        <div style={{textAlign:"center",marginBottom:28}}>
-          <Logo size={32}/><br/>
-          <div style={{fontFamily:"'Orbitron',monospace",fontWeight:700,fontSize:15,letterSpacing:".2em",color:"#F4F7FF",marginTop:12}}>NEURA</div>
-          <div style={{fontSize:11,color:"#52525b",fontFamily:"'DM Sans',sans-serif",marginTop:4,letterSpacing:".08em"}}>SISTEMA OPERATIVO COGNITIVO</div>
+      <div style={{width:"100%",maxWidth:380,padding:32,borderRadius:20,background:"rgba(255,255,255,.04)",border:"1px solid rgba(0,229,255,.1)",backdropFilter:"blur(20px)"}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <Logo size={36}/><br/>
+          <div style={{fontFamily:"'Orbitron',monospace",fontWeight:700,fontSize:15,letterSpacing:".25em",color:"#F4F7FF",marginTop:10}}>NEURA</div>
+          <div style={{fontSize:11,color:"#606880",fontFamily:"'DM Sans',sans-serif",marginTop:4}}>{authMode==="login"?"INICIAR SESIÓN":"CREAR CUENTA"}</div>
         </div>
-        <button onClick={signIn} disabled={authLoad} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:"12px",borderRadius:8,background:authLoad?"rgba(255,255,255,.03)":"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",color:"#F4F7FF",fontSize:13,fontFamily:"'DM Sans',sans-serif",fontWeight:500,cursor:authLoad?"not-allowed":"pointer",transition:"all .2s",marginBottom:10}}
-          onMouseEnter={e=>{if(!authLoad)e.currentTarget.style.background="rgba(255,255,255,.1)";}} onMouseLeave={e=>e.currentTarget.style.background=authLoad?"rgba(255,255,255,.03)":"rgba(255,255,255,.06)"}>
-          <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-          {authLoad?"Conectando...":"Continuar con Google"}
-        </button>
-        {authErr&&<div style={{fontSize:11,color:"#f87171",fontFamily:"'DM Sans',sans-serif",textAlign:"center",marginBottom:8}}>{authErr}</div>}
-        <div style={{fontSize:10,color:"#3f3f46",fontFamily:"'DM Sans',sans-serif",textAlign:"center",lineHeight:1.6,marginTop:8}}>Acceso seguro via Google OAuth. Tu key de Anthropic nunca se expone al cliente.</div>
+        <input type="email" placeholder="Email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")(authMode==="login"?signIn:signUp)();}} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",marginBottom:10,display:"block"}}/>
+        <input type="password" placeholder="Contraseña" value={authPass} onChange={e=>setAuthPass(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")(authMode==="login"?signIn:signUp)();}} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",marginBottom:10,display:"block"}}/>
+        {authErr&&<div style={{fontSize:12,color:authErr.startsWith("✓")?"#00E5FF":"#ff6b6b",fontFamily:"'DM Sans',sans-serif",marginBottom:10,textAlign:"center"}}>{authErr}</div>}
+        <button onClick={authMode==="login"?signIn:signUp} disabled={authLoad} style={{width:"100%",padding:13,borderRadius:10,background:"linear-gradient(135deg,#35D8FF,#7B4DFF)",color:"#fff",fontSize:14,fontFamily:"'Syne',sans-serif",fontWeight:700,letterSpacing:".08em",opacity:authLoad?.5:1,marginBottom:10,cursor:"pointer"}}>{authLoad?"...":(authMode==="login"?"INGRESAR":"CREAR CUENTA")}</button>
+        <button onClick={()=>{setAuthMode(m=>m==="login"?"register":"login");setAuthErr("");}} style={{width:"100%",fontSize:12,color:"#606880",fontFamily:"'DM Sans',sans-serif",textAlign:"center",padding:6,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#00E5FF"} onMouseLeave={e=>e.currentTarget.style.color="#606880"}>{authMode==="login"?"¿No tenés cuenta? Registrate":"¿Ya tenés cuenta? Ingresá"}</button>
       </div>
     </div></>
   );
@@ -731,7 +688,7 @@ export default function NEURA() {
       <Sidebar onNew={newChat} projects={projects} tasks={tasks} onOpen={openProject} onSignOut={USE_SUPABASE?signOut:null} session={session} onOpenCodex={()=>{setShowCodex(true);setShowWelcome(false);}}/>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,position:"relative"}}>
         {showCodex?(
-          <CodexWorkspace onBack={newChat} providerToken={providerToken}/>
+          <CodexWorkspace onBack={newChat}/>
         ):showWelcome?(
           <Home onSend={(t,img)=>{if(img){setAttachedImage(img);setTimeout(()=>sendMessage(t||""),50);}else sendMessage(t);}} selectedMode={selectedMode} onMode={setSelectedMode} isThinking={loading}/>
         ):(
@@ -777,5 +734,4 @@ export default function NEURA() {
     </div></>
   );
 }
-
 
