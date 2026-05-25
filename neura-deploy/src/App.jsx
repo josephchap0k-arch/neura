@@ -491,21 +491,11 @@ function Home({onSend,selectedMode,onMode,isThinking}) {
                 <button key={i} onClick={a} style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",justifyContent:"center",color:"#6F789F",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(0,229,255,.08)";e.currentTarget.style.color="#00E5FF";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,.05)";e.currentTarget.style.color="#6F789F";}}><Ic/></button>
               ))}
               <div style={{flex:1}}/>
-              <button onClick={()=>{const keys=modeKeys;onMode(keys[(keys.indexOf(selectedMode)+1)%keys.length]);}} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:7,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",color:MODES[selectedMode].color,fontSize:11,fontFamily:"'Syne',sans-serif",letterSpacing:".06em",transition:"all .18s ease",opacity:.8,cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.borderColor="rgba(0,229,255,.3)";}} onMouseLeave={e=>{e.currentTarget.style.opacity=".8";e.currentTarget.style.borderColor="rgba(0,229,255,.12)";}}>
-                {MODES[selectedMode].label}<I.ChevD/>
-              </button>
               <button onClick={send} disabled={!input.trim()&&!img} style={{width:38,height:38,borderRadius:"50%",background:(input.trim()||img)?"linear-gradient(135deg,#35D8FF,#7B4DFF)":"rgba(255,255,255,.05)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s ease",color:"#fff",opacity:(input.trim()||img)?1:.25,boxShadow:(input.trim()||img)?"0 0 22px rgba(0,229,255,.35)":"none",cursor:"pointer"}}><I.ArrowUp/></button>
             </div>
           </div>
         </div>
-        <div style={{width:"100%",maxWidth:600,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-          {modeKeys.map(k=>{
-            const m=MODES[k]; const sel=selectedMode===k;
-            return(
-              <button key={k} onClick={()=>onMode(k)} style={{padding:"12px 10px 16px",borderRadius:10,background:sel?"rgba(0,229,255,.07)":"rgba(255,255,255,.02)",border:`1px solid ${sel?"rgba(0,229,255,.28)":"rgba(255,255,255,.06)"}`,textAlign:"left",transition:"all .2s ease",display:"flex",flexDirection:"column",gap:5,position:"relative",cursor:"pointer"}} onMouseEnter={e=>{if(!sel){e.currentTarget.style.background="rgba(0,229,255,.04)";e.currentTarget.style.borderColor="rgba(0,229,255,.15)";} }} onMouseLeave={e=>{if(!sel){e.currentTarget.style.background="rgba(255,255,255,.02)";e.currentTarget.style.borderColor="rgba(255,255,255,.06)";}}}>
-                <div style={{width:5,height:5,borderRadius:"50%",background:sel?m.color:"rgba(255,255,255,.15)",boxShadow:sel?`0 0 6px ${m.color}`:"none",transition:"all .2s ease"}}/>
-                <div style={{fontSize:11,fontFamily:"'DM Sans',sans-serif",color:sel?"#F4F7FF":"#7080a0",fontWeight:sel?600:400,marginBottom:1}}>{m.label}</div>
-                <div style={{fontSize:10,fontFamily:"'DM Sans',sans-serif",color:"#3a3a5a",lineHeight:1.4}}>{m.sub}</div>
+<div style={{fontSize:10,fontFamily:"'DM Sans',sans-serif",color:"#3a3a5a",lineHeight:1.4}}>{m.sub}</div>
               </button>
             );
           })}
