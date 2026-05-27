@@ -539,8 +539,6 @@ export default function NEURA() {
   const [selectedMode,setSelectedMode]=useState("contextual");
   const [attachedImage,setAttachedImage]=useState(null);
   const [activeAgents,setActiveAgents]=useState([]);
-  const [isListening,setIsListening]=useState(false);
-  const recognitionRef=useRef(null);
   const fileRef=useRef(null);
   const chatRef=useRef(null);
   const projRef=useRef(null);
@@ -585,7 +583,6 @@ export default function NEURA() {
   };
 
   const openProject=async p=>{
-    setView&&setView("chat");
     setActiveProject(p);projRef.current=p;
     const localMsgs=sg(\`neura-msgs-${p.id}\`)||[];
     setMessages(localMsgs);
