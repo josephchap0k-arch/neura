@@ -641,4 +641,233 @@ export default function App() {
       `}</style>
     </>
   );
+}const NEURA_SYSTEM = `Sos NEURA, una capa inteligente para que cualquier persona use IA aunque no sepa escribir prompts.
+
+REGLA PRINCIPAL: El usuario habla como le sale. NEURA transforma internamente esa intencion en una peticion de nivel experto y responde en consecuencia.
+
+PROHIBIDO:
+- Convertir pedidos en cuestionarios
+- Pedir datos antes de empezar
+- Responder con listas de preguntas
+
+PROMPT MASTER INTERNO - antes de responder, interpreta silenciosamente:
+objetivo probable | intencion real | contexto disponible | experto que mejor puede resolverlo | formato mas util | nivel de profundidad
+
+Asumi automaticamente el rol profesional mas adecuado:
+- Publicidad: estratega de marketing y copywriter
+- Idea de negocio: empresario y analista de mercado
+- Contrato: especialista en analisis documental
+- Contenido: estratega y redactor
+- Programacion: ingeniero de software
+
+REGLA: PRIMERO VALOR. Siempre: RESPONDER -> AYUDAR -> PROFUNDIZAR. Nunca: PREGUNTAR -> PREGUNTAR -> RESPONDER.
+
+Cuando el usuario diga algo como "quiero hacer publicidad" o "necesito una idea de negocio": produce primero una respuesta util con supuestos razonables. Solo al final hace UNA pregunta para personalizar mejor.
+
+Una pregunta por vez, solo cuando sea realmente indispensable.
+
+TONO: natural, seguro, claro, directo, util, humano, practico. Voseo argentino. Sin lenguaje robotico, sin metodologia visible, sin explicaciones sobre prompting.
+
+OBJETIVO: el usuario debe sentir "entendio lo que queria aunque yo no supe explicarlo bien". Nunca debe sentir que tiene que completar un formulario.`;
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+export default function App() {
+  const [convs, setConvs] = useState(getConvs);
+  const [activeId, setActiveId] = useState(null);
+  const [model, setModel] = useState("auto");
+  const [loading, setLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showInstall, setShowInstall] = useState(false);
+  const bottomRef = useRef(null);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+  // Active conversation
+  const activeConv = convs.find(c=>c.id===activeId)||null;
+  const messages = activeConv?.messages||[];
+
+  // Show PWA install banner on iOS Safari
+  useEffect(()=>{
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode:standalone)').matches;
+    const dismissed = localStorage.getItem("neura-install-dismissed");
+    if (isIOS && !isStandalone && !dismissed) {
+      setTimeout(()=>setShowInstall(true), 3000);
+    }
+  },[]);
+
+  // Auto-scroll
+  useEffect(()=>{
+    bottomRef.current?.scrollIntoView({behavior:"smooth"});
+  },[messages.length, loading]);
+
+  const newChat = () => { setActiveId(null); setSidebarOpen(false); };
+
+  const updateConv = (id, updater) => {
+    setConvs(prev => {
+      const updated = prev.map(c => c.id===id ? updater(c) : c);
+      saveConvs(updated);
+      return updated;
+    });
+  };
+
+  const deleteConv = (id) => {
+    setConvs(prev => {
+      const updated = prev.filter(c=>c.id!==id);
+      saveConvs(updated);
+      return updated;
+    });
+    if (activeId===id) setActiveId(null);
+  };
+
+  const sendMessage = async (text) => {
+    if (!text.trim() || loading) return;
+
+    // Create conversation if needed
+    let convId = activeId;
+    if (!convId) {
+      convId = mkId();
+      const newConv = { id:convId, title:mkTitle(text), messages:[], model, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+      setConvs(prev => { const updated=[newConv,...prev]; saveConvs(updated); return updated; });
+      setActiveId(convId);
+    }
+
+    // Add user message
+    const userMsg = { role:"user", content:text, id:mkId() };
+    updateConv(convId, c=>({...c, messages:[...c.messages,userMsg], updatedAt:new Date().toISOString(), title:c.messages.length===0?mkTitle(text):c.title }));
+    setLoading(true);
+
+    // Build history for API
+    const hist = [...(convs.find(c=>c.id===convId)?.messages||[]), userMsg];
+    const apiMsgs = hist.map(m=>({role:m.role,content:m.content})).slice(-20);
+
+    // Streaming placeholder
+    const aId = mkId();
+    updateConv(convId, c=>({...c, messages:[...c.messages,{role:"assistant",content:"",id:aId,provider:""}] }));
+
+    try {
+      const res = await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:apiMsgs,model,stream:true})});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "", reply = "", detectedProvider = "";
+      const providerHeader = res.headers.get("X-Provider");
+      if (providerHeader) detectedProvider = providerHeader;
+
+      while (true) {
+        const {done,value} = await reader.read();
+        if (done) break;
+        buf += dec.decode(value,{stream:true});
+        const lines = buf.split("\n");
+        buf = lines.pop()||"";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data==="[DONE]") break;
+          try {
+            const evt = JSON.parse(data);
+            // Anthropic format
+            if (evt.type==="content_block_delta"&&evt.delta?.type==="text_delta") {
+              reply += evt.delta.text;
+              updateConv(convId,c=>({...c,messages:c.messages.map(m=>m.id===aId?{...m,content:reply,provider:detectedProvider}:m)}));
+            }
+            // OpenAI format
+            if (evt.choices?.[0]?.delta?.content) {
+              reply += evt.choices[0].delta.content;
+              updateConv(convId,c=>({...c,messages:c.messages.map(m=>m.id===aId?{...m,content:reply,provider:detectedProvider}:m)}));
+            }
+            // Provider info
+            if (evt.x_provider) detectedProvider = evt.x_provider;
+          } catch {}
+        }
+      }
+      if (!reply) throw new Error("Respuesta vacía");
+    } catch (err) {
+      updateConv(convId, c=>({...c,messages:c.messages.map(m=>m.id===aId?{...m,content:`Lo siento, hubo un problema: ${err.message}. Reintentá.`}:m)}));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <style>{CSS}</style>
+      <div style={{display:"flex",height:"100%",height:"-webkit-fill-available",background:T.bg}}>
+
+        {/* ── DESKTOP SIDEBAR ── */}
+        <div style={{width:260,flexShrink:0,display:"none",height:"100%"}} className="desktop-sidebar">
+          <Sidebar convs={convs} activeId={activeId} onNew={newChat} onSelect={id=>{setActiveId(id);}} onDelete={deleteConv} isMobile={false}/>
+        </div>
+
+        {/* ── MOBILE SIDEBAR OVERLAY ── */}
+        {sidebarOpen&&<>
+          <div onClick={()=>setSidebarOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",zIndex:300}} className="mobile-only"/>
+          <div style={{position:"fixed",left:0,top:0,bottom:0,width:280,zIndex:301}} className="mobile-only">
+            <Sidebar convs={convs} activeId={activeId} onNew={newChat} onSelect={id=>{setActiveId(id);setSidebarOpen(false);}} onDelete={deleteConv} onClose={()=>setSidebarOpen(false)} isMobile={true}/>
+          </div>
+        </>}
+
+        {/* ── MAIN ── */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,height:"100%",overflow:"hidden"}}>
+          {/* Mobile header */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:`1px solid ${T.border}`,flexShrink:0}} className="mobile-header">
+            <button onClick={()=>setSidebarOpen(true)} style={{color:T.textSec,display:"flex",cursor:"pointer",padding:4,borderRadius:7,background:"transparent",border:"none"}} onMouseEnter={e=>e.currentTarget.style.background=T.bgSubtle} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <Icon.Menu/>
+            </button>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <NeuraLogo size={22}/>
+              <span style={{fontWeight:700,fontSize:14,letterSpacing:".1em",color:T.textPrimary}}>{activeConv?.title||"NEURA"}</span>
+            </div>
+            <button onClick={newChat} style={{color:T.accent,display:"flex",cursor:"pointer",padding:4,borderRadius:7,background:"transparent",border:"none"}}>
+              <Icon.Plus/>
+            </button>
+          </div>
+
+          {/* Desktop header */}
+          <div style={{display:"none",alignItems:"center",padding:"12px 20px",borderBottom:`1px solid ${T.border}`,flexShrink:0,gap:12}} className="desktop-header">
+            <span style={{flex:1,fontSize:14,color:T.textSec,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeConv?.title||""}</span>
+            {activeId&&<button onClick={newChat} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:T.bgSubtle,border:`1px solid ${T.border}`,color:T.textSec,fontSize:12,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=T.borderFocus} onMouseLeave={e=>e.currentTarget.style.borderColor=T.border}>
+              <Icon.Plus/> Nuevo
+            </button>}
+          </div>
+
+          {/* Messages / Home */}
+          {!activeId
+            ? <HomeEmpty onSend={sendMessage} model={model} onModelChange={setModel}/>
+            : <div style={{flex:1,overflowY:"auto",padding:"20px 16px",WebkitOverflowScrolling:"touch"}}>
+                <div style={{maxWidth:720,margin:"0 auto"}}>
+                  {messages.map(m=><div key={m.id} className="msg-in"><Message msg={m}/></div>)}
+                  {loading&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+                    <NeuraLogo size={28}/>
+                    <div style={{display:"flex",gap:4}}>
+                      {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:T.accent,animation:`voicePulse .8s ${i*.15}s ease-in-out infinite`,opacity:.6}}/>)}
+                    </div>
+                  </div>}
+                  <div ref={bottomRef}/>
+                </div>
+              </div>
+          }
+
+          {/* Composer */}
+          {activeId&&<Composer onSend={sendMessage} isLoading={loading} model={model} onModelChange={setModel}/>}
+        </div>
+      </div>
+
+      {/* PWA install banner */}
+      {showInstall&&<InstallBanner onDismiss={()=>{setShowInstall(false);localStorage.setItem("neura-install-dismissed","1");}}/>}
+
+      {/* Responsive CSS */}
+      <style>{`
+        .desktop-sidebar{display:flex!important;}
+        .mobile-header{display:none!important;}
+        .desktop-header{display:flex!important;}
+        .mobile-only{display:block!important;}
+        @media(max-width:768px){
+          .desktop-sidebar{display:none!important;}
+          .mobile-header{display:flex!important;}
+          .desktop-header{display:none!important;}
+        }
+      `}</style>
+    </>
+  );
 }
