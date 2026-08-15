@@ -1,740 +1,644 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
-const SUPABASE_URL      = "https://qrjabnoghrjiukkdbgap.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
-const USE_SUPABASE      = !SUPABASE_ANON_KEY.startsWith("YOUR_");
-const SIDEBAR_W         = 232;
-
-const NEURA_SYSTEM = `You are NEURA — a Cognitive Operating System, not a chatbot.
-Transform goals into executable systems. Diagnose operational problems, build acquisition pipelines, orchestrate agents, optimize workflows.
-SYSTEM IDENTITY: operational, alive, dynamic. Use: SISTEMA ACTIVO / PIPELINE GENERADO / MODO EJECUCIÓN / AGENTES ACTIVOS.
-Avoid: assistant tone, motivational clichés, "I can help", "Here are ideas".
-PIPELINE THINKING: Tráfico → Atención → Captura → Calificación → Conversión → Retención → Expansión.
-Every interaction produces at least ONE executable output. AUTO-BUILD without unnecessary permission.
-FORMAT: OBJETIVO → DIAGNÓSTICO → SISTEMA GENERADO → OUTPUTS → PRÓXIMA FASE
-LANGUAGE: Auto-detect. Respond in same language. Spanish LATAM / Argentine voseo when appropriate.
-RULE: NEURA builds, orchestrates and optimizes operational execution systems.`;
-
-const MODES = {
-  contextual:{label:"Contextual",sub:"Memoria activa",color:"#00E5FF",prompt:"MODO CONTEXTUAL: Priorizá memoria y continuidad entre operaciones."},
-  estratega: {label:"Estratega",  sub:"Visión sistémica",   color:"#818cf8",prompt:"MODO ESTRATEGA: Pensamiento sistémico, visión global, decisiones de alto impacto. Actuá como socio estratégico senior."},
-  operador:  {label:"Operador",   sub:"Ejecución directa",  color:"#34d399",prompt:"MODO OPERADOR: Ejecución directa, sin rodeos. Dame tareas concretas, yo las ejecuto."},
-  ventas:    {label:"Ventas",     sub:"Pipelines & cierre",  color:"#f59e0b",prompt:"MODO VENTAS: Optimizá pipelines, cerrá deals, generá propuestas y argumentos de venta. Actuá como director comercial."},
-  growth:    {label:"Growth",     sub:"Adquisición & escala",color:"#ec4899",prompt:"MODO GROWTH: Estrategias de adquisición, retención, viralizad y escala. Métricas y experimentos."},
-  finanzas:  {label:"Finanzas",   sub:"Flujo & proyección",  color:"#a3e635",prompt:"MODO FINANZAS: Flujo de caja, proyecciones, costos, márgenes. Pensá como CFO."},
-  contenido: {label:"Contenido",  sub:"Narrativa & copy",    color:"#67e8f9",prompt:"MODO CONTENIDO: Copy persuasivo, narrativas de marca, contenido que convierte."},
-  producto:  {label:"Producto",   sub:"UX & roadmap",        color:"#c084fc",prompt:"MODO PRODUCTO: UX, roadmap, features, feedback de usuarios. Actuá como CPO."},
-  research:  {label:"Research",   sub:"Análisis & datos",    color:"#fb923c",prompt:"MODO RESEARCH: Análisis profundo, benchmarks, datos de mercado, insights accionables."},
-  branding:  {label:"Branding",   sub:"Identidad & posición", color:"#f472b6",prompt:"MODO BRANDING: Identidad de marca, posicionamiento, diferenciación competitiva."},
-  legal:     {label:"Legal",      sub:"Contratos & riesgo",  color:"#94a3b8",prompt:"MODO LEGAL: Revisión de contratos, riesgos legales, estructura societaria. Sin asesoramiento formal."},
-  arquitecto:{label:"Arquitecto", sub:"Stack & sistemas",    color:"#22d3ee",prompt:"MODO ARQUITECTO: Arquitectura de sistemas, stack tecnológico, decisiones técnicas de alto nivel."},
-  soporte:   {label:"Soporte",    sub:"Retención & CX",      color:"#4ade80",prompt:"MODO SOPORTE: Customer experience, retención, resolución de conflictos, NPS."},
-  master:    {label:"Maestro",    sub:"Orquestación total",  color:"#00E5FF",prompt:"MODO MAESTRO: Pensamiento sistémico, visión global, conexión de todos los sistemas."},
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const T = {
+  bg:        "#FFFFFF",
+  bgSubtle:  "#F9F9F9",
+  bgInput:   "#FFFFFF",
+  border:    "#E5E5E5",
+  borderFocus:"#9CA3AF",
+  textPrimary:"#111111",
+  textSec:   "#6B6B6B",
+  textTert:  "#9CA3AF",
+  accent:    "#6D28D9",
+  accentSoft:"#F5F3FF",
+  userBg:    "#F3F4F6",
+  neuraText: "#111111",
 };
 
-const I = {
-  Plus:    ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>,
-  Search:  ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="1.6"/><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>,
-  Memory:  ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="8" rx="2" stroke="currentColor" strokeWidth="1.6"/><rect x="2" y="14" width="20" height="8" rx="2" stroke="currentColor" strokeWidth="1.6"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="18" r="1" fill="currentColor"/></svg>,
-  Book:    ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" stroke="currentColor" strokeWidth="1.6"/></svg>,
-  Send:    ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  Close:   ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
-  Mic:     ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="11" rx="3" stroke="currentColor" strokeWidth="1.6"/><path d="M19 10a7 7 0 01-14 0M12 19v3M8 22h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>,
-  Image:   ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.6"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  Clip:    ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  ChevD:   ()=><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  ArrowUp: ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  Back:    ()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  LogOut:  ()=><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+// ─── PROVIDERS CONFIG ─────────────────────────────────────────────────────────
+const PROVIDERS = [
+  { id:"auto",     label:"✨ Automático",  sub:"NEURA elige",     enabled: true  },
+  { id:"claude",   label:"Claude",         sub:"Anthropic",       enabled: true  },
+  { id:"gpt",      label:"GPT",            sub:"OpenAI",          enabled: false },
+  { id:"gemini",   label:"Gemini",         sub:"Google",          enabled: false },
+  { id:"grok",     label:"Grok",           sub:"xAI",             enabled: false },
+  { id:"deepseek", label:"DeepSeek",       sub:"DeepSeek",        enabled: false },
+  { id:"kimi",     label:"Kimi",           sub:"Moonshot",        enabled: false },
+];
+
+// ─── STORAGE HELPERS ──────────────────────────────────────────────────────────
+const CONV_KEY = "neura-conversations-v1";
+const getConvs = () => { try { return JSON.parse(localStorage.getItem(CONV_KEY)||"[]"); } catch { return []; } };
+const saveConvs = (list) => { try { localStorage.setItem(CONV_KEY, JSON.stringify(list.slice(0,100))); } catch {} };
+const mkId = () => Math.random().toString(36).slice(2)+Date.now().toString(36);
+const mkTitle = (text) => text.slice(0,50).trim()||"Nueva conversación";
+
+// ─── MARKDOWN RENDERER (minimal) ──────────────────────────────────────────────
+function renderMarkdown(text) {
+  if (!text) return "";
+  let html = text
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/```([\w]*)\n?([\s\S]*?)```/g, (_,lang,code)=>`<pre><code class="lang-${lang}">${code.trim()}</code></pre>`)
+    .replace(/\`([^\`]+)\`/g,"<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g,"<em>$1</em>")
+    .replace(/^#{3}\s+(.+)$/gm,"<h3>$1</h3>")
+    .replace(/^#{2}\s+(.+)$/gm,"<h2>$1</h2>")
+    .replace(/^#{1}\s+(.+)$/gm,"<h1>$1</h1>")
+    .replace(/^\s*[-*]\s+(.+)$/gm,"<li>$1</li>")
+    .replace(/(<li>.*<\/li>)/s,"<ul>$1</ul>")
+    .replace(/\n{2,}/g,"</p><p>")
+    .replace(/\n/g,"<br/>");
+  return `<p>${html}</p>`.replace(/<p><\/p>/g,"").replace(/<p>(<h[123]>)/g,"$1").replace(/(<\/h[123]>)<\/p>/g,"$1");
+}
+
+// ─── ICONS ────────────────────────────────────────────────────────────────────
+const Icon = {
+  Plus: ()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Send: ()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+  Mic:  ()=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v4M8 23h8"/></svg>,
+  Menu: ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
+  X:    ()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  Copy: ()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>,
+  Chev:()=><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>,
+  Clip: ()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
+  Trash:()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>,
 };
 
-function Logo({size=28}) {
+// ─── NEURA LOGO ───────────────────────────────────────────────────────────────
+function NeuraLogo({ size=28 }) {
   return (
-    <svg width={size} height={Math.round(size*.87)} viewBox="0 0 32 28" fill="none" style={{overflow:"visible"}}>
-      <defs>
-        <linearGradient id="lg" x1="10%" y1="0%" x2="80%" y2="100%">
-          <stop offset="0%" stopColor="#35D8FF"/><stop offset="100%" stopColor="#7B4DFF"/>
-        </linearGradient>
-        <radialGradient id="gb" cx="50%" cy="92%" r="45%">
-          <stop offset="0%" stopColor="#35D8FF" stopOpacity=".9"/><stop offset="100%" stopColor="#35D8FF" stopOpacity="0"/>
-        </radialGradient>
-      </defs>
-      <path d="M16,2 C16.6,1 17.8,1 18.2,2 L30,24 C30.5,25 30,27 28.8,27 L3.2,27 C2,27 1.5,25 2,24 Z" fill="url(#lg)" stroke="rgba(53,216,255,.3)" strokeWidth=".6"/>
-      <path d="M16,8 L24,22 L8,22 Z" fill="none" stroke="rgba(53,216,255,.5)" strokeWidth="1" strokeLinejoin="round"/>
-      <ellipse cx="16" cy="26" rx="10" ry="2.5" fill="url(#gb)"/>
-      <path d="M13.5,5 C14.5,3.2 17.5,3.2 18.5,5" stroke="rgba(255,255,255,.55)" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="14" fill="#6D28D9"/>
+      <path d="M10 22V10l12 12V10" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
 
-const sg = async k => { try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;} };
-const ss = async (k,v) => { try{await window.storage.set(k,JSON.stringify(v));}catch{} };
-const sd = async k => { try{await window.storage.delete(k);}catch{} };
-
-const sb = {
-  h:()=>({Authorization:`Bearer ${SUPABASE_ANON_KEY}`,"Content-Type":"application/json",apikey:SUPABASE_ANON_KEY,"Prefer":"return=representation"}),
-  ah:t=>({Authorization:`Bearer ${t}`,"Content-Type":"application/json",apikey:SUPABASE_ANON_KEY,"Prefer":"return=representation"}),
-  async req(path,opts={}){const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...opts,headers:{...this.h(),...(opts.headers||{})}});return r.ok?r.json():null;},
-  async signIn(e,p){const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`,{method:"POST",headers:this.h(),body:JSON.stringify({email:e,password:p})});return r.json();},
-  async signUp(e,p){const r=await fetch(`${SUPABASE_URL}/auth/v1/signup`,{method:"POST",headers:this.h(),body:JSON.stringify({email:e,password:p})});return r.json();},
-  async signOut(t){await fetch(`${SUPABASE_URL}/auth/v1/logout`,{method:"POST",headers:this.ah(t)});},
-  async refresh(rt){const r=await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:this.h(),body:JSON.stringify({refresh_token:rt})});return r.json();},
-  select:(t,p="")=>sb.req(`${t}?${p}`),
-  insert:(t,b)=>sb.req(t,{method:"POST",body:JSON.stringify(b)}),
-  update:(t,id,b)=>sb.req(`${t}?id=eq.${id}`,{method:"PATCH",body:JSON.stringify(b)}),
-  delete:(t,id)=>sb.req(`${t}?id=eq.${id}`,{method:"DELETE"}),
+// ─── MODEL CHIPS — visible horizontal selector ────────────────────────────────
+const PROVIDER_INFO = {
+  auto:     "Neura elige por vos la IA más adecuada para cada pedido.",
+  claude:   "Usar Claude para esta conversación.",
+  gpt:      "Usar GPT para esta conversación.",
+  gemini:   "Usar Gemini para esta conversación.",
+  grok:     "Usar Grok para esta conversación.",
+  deepseek: "Usar DeepSeek para esta conversación.",
+  kimi:     "Usar Kimi para esta conversación.",
 };
 
-const store = {
-  uid:null,
-  async getProjects(){
-    if(USE_SUPABASE&&this.uid){try{return await sb.select("projects",`user_id=eq.${this.uid}&order=updated_at.desc`)||[];}catch{}}
-    return await sg("neura-projects")||[];
-  },
-  async saveProject(p){
-    const all=await sg("neura-projects")||[]; const i=all.findIndex(x=>x.id===p.id); const now=new Date().toISOString();
-    if(i>=0)all[i]={...all[i],...p,updatedAt:now};else all.unshift({...p,createdAt:now,updatedAt:now});
-    await ss("neura-projects",all);
-    if(USE_SUPABASE&&this.uid){try{await sb.insert("projects",{id:p.id,user_id:this.uid,title:p.title,status:p.status||"LIVE"});}catch{}}
-  },
-  async updateProject(id,u){
-    const all=await sg("neura-projects")||[]; const i=all.findIndex(x=>x.id===id);
-    if(i>=0){all[i]={...all[i],...u,updatedAt:new Date().toISOString()};await ss("neura-projects",all);}
-    if(USE_SUPABASE&&this.uid){try{await sb.update("projects",id,{status:u.status,last_summary:u.lastSummary});}catch{}}
-  },
-  async deleteProject(id){await ss("neura-projects",(await sg("neura-projects")||[]).filter(p=>p.id!==id));await sd(`neura-msgs-${id}`);},
-  async getMessages(pid){return await sg(`neura-msgs-${pid}`)||[];},
-  async saveMessages(pid,msgs){await ss(`neura-msgs-${pid}`,msgs.map(m=>({role:m.role,content:m.content||null,type:m.type||null,intent:m.intent||null,routes:m.routes||null,resolved:m.resolved||false,resolvedLabel:m.resolvedLabel||null,createdAt:m.createdAt||new Date().toISOString()})));},
-  async appendMsg(pid,m){if(USE_SUPABASE&&this.uid){try{await sb.insert("messages",{project_id:pid,user_id:this.uid,role:m.role,content:m.content||""});}catch{}}},
-  async getTasks(){return await sg("neura-tasks")||[];},
-  async addTask(t){const all=await sg("neura-tasks")||[];all.unshift(t);await ss("neura-tasks",all);return t;},
-  async updateTask(id,u){await ss("neura-tasks",(await sg("neura-tasks")||[]).map(t=>t.id===id?{...t,...u}:t));},
-  async deleteTask(id){await ss("neura-tasks",(await sg("neura-tasks")||[]).filter(t=>t.id!==id));},
-};
-
-const genId  = ()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
-const timeAgo = ts => {
-  if(!ts)return""; const d=(Date.now()-new Date(ts).getTime())/1000;
-  if(d<60)return"ahora"; if(d<3600)return`${Math.floor(d/60)}m`;
-  if(d<86400)return`${Math.floor(d/3600)}h`; return`${Math.floor(d/86400)}d`;
-};
-const buildTitle = t => t.slice(0,50).trim()||"Nueva operación";
-const AGENT_KW = {mkt:["marketing","campaña","marca","contenido","ads","tráfico"],ventas:["ventas","clientes","conversión","leads"],ops:["sistema","proceso","automatización","flujo"]};
-const detectAgents = t => Object.entries(AGENT_KW).filter(([,kws])=>kws.some(k=>t.toLowerCase().includes(k))).map(([a])=>a);
-
-const THINKING_MSGS = ["Analizando sistema...","Construyendo pipeline...","Activando agentes...","Generando estructura...","Procesando operación...","Calibrando estrategia..."];
-
-function ThinkingState() {
-  const [i,setI]=useState(0);
-  useEffect(()=>{const t=setInterval(()=>setI(p=>(p+1)%THINKING_MSGS.length),2200);return()=>clearInterval(t);},[]);
-  return(
-    <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:20,animation:"fadeUp .3s ease"}}>
-      <div style={{flexShrink:0,marginTop:4}}><Logo size={22}/></div>
-      <div style={{padding:"12px 16px",borderRadius:"4px 16px 16px 16px",background:"rgba(255,255,255,.04)",border:"1px solid rgba(0,229,255,.1)",display:"flex",alignItems:"center",gap:8}}>
-        <span style={{width:6,height:6,borderRadius:"50%",background:"#00E5FF",display:"inline-block",animation:"blink 1.4s ease-in-out infinite"}}/>
-        <span style={{fontSize:13,fontFamily:"'DM Sans',sans-serif",color:"#606880",fontStyle:"italic"}}>{THINKING_MSGS[i]}</span>
+function ModelChips({ value, onChange }) {
+  const [tooltip, setTooltip] = useState(null);
+  return (
+    <div>
+      {/* Label */}
+      <div style={{fontSize:10,color:T.textTert,letterSpacing:".06em",marginBottom:7,fontWeight:500,textTransform:"uppercase"}}>
+        Cerebro
       </div>
-    </div>
-  );
-}
-
-function Bubble({msg}) {
-  const isUser=msg.role==="user";
-  if(msg.type==="routes")return null;
-  return(
-    <div style={{display:"flex",justifyContent:isUser?"flex-end":"flex-start",marginBottom:18,animation:"fadeUp .3s ease"}}>
-      {!isUser&&<div style={{flexShrink:0,marginRight:10,marginTop:4}}><Logo size={22}/></div>}
-      <div style={{maxWidth:"80%",padding:"12px 16px",borderRadius:isUser?"16px 4px 16px 16px":"4px 16px 16px 16px",background:isUser?"linear-gradient(135deg,#1a2a8c,#5030b0)":"rgba(255,255,255,.04)",border:isUser?"none":"1px solid rgba(255,255,255,.06)",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",lineHeight:1.65,wordBreak:"break-word",whiteSpace:"pre-wrap"}}>
-        {msg.imagePreview&&<img src={msg.imagePreview} alt="" style={{width:"100%",maxWidth:280,borderRadius:8,marginBottom:8,display:"block"}}/>}
-        {msg.content}
-      </div>
-    </div>
-  );
-}
-
-function Routes({msg,onSelect}) {
-  const [hov,setHov]=useState(null);
-  if(msg.resolved)return(
-    <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:18}}>
-      <div style={{flexShrink:0,marginTop:4}}><Logo size={22}/></div>
-      <div style={{padding:"10px 14px",borderRadius:"4px 16px 16px 16px",background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.1)",fontSize:13,fontFamily:"'DM Sans',sans-serif",color:"#6a7090"}}>
-        Enfoque: <span style={{color:"#00E5FF",fontWeight:500}}>{msg.resolvedLabel}</span>
-      </div>
-    </div>
-  );
-  return(
-    <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:20,animation:"fadeUp .3s ease"}}>
-      <div style={{flexShrink:0,marginTop:4}}><Logo size={22}/></div>
-      <div style={{flex:1,maxWidth:"85%"}}>
-        <div style={{marginBottom:10,display:"flex",alignItems:"center",gap:7}}>
-          <span style={{width:4,height:4,borderRadius:"50%",background:"#00E5FF",display:"inline-block",animation:"blink 2s infinite"}}/>
-          <span style={{fontSize:10,fontFamily:"'Syne',sans-serif",letterSpacing:".12em",color:"#00E5FF",opacity:.7}}>RUTAS COGNITIVAS</span>
-          <span style={{fontSize:11,color:"#404860",fontFamily:"'DM Sans',sans-serif"}}>· {msg.intent}</span>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:6}}>
-          {(msg.routes||[]).map((r,i)=>(
-            <button key={r.id||i} onClick={()=>onSelect(r)} onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
-              style={{textAlign:"left",padding:"11px 14px",borderRadius:9,background:hov===i?"rgba(0,229,255,.06)":"rgba(255,255,255,.025)",border:`1px solid ${hov===i?"rgba(0,229,255,.25)":"rgba(255,255,255,.07)"}`,transition:"all .18s ease",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
-              <span style={{width:20,height:20,borderRadius:5,background:hov===i?"rgba(0,229,255,.12)":"rgba(255,255,255,.04)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontFamily:"'Syne',sans-serif",color:hov===i?"#00E5FF":"#404060",fontWeight:700,flexShrink:0,transition:"all .18s ease"}}>{i+1}</span>
-              <div>
-                <div style={{fontSize:11,fontFamily:"'Syne',sans-serif",fontWeight:600,letterSpacing:".06em",color:hov===i?"#E8EEF8":"#7080a0",marginBottom:2,transition:"all .18s ease"}}>{r.label&&r.label.toUpperCase()}</div>
-                <div style={{fontSize:13,fontFamily:"'DM Sans',sans-serif",color:hov===i?"#B8C2E8":"#505870",transition:"all .18s ease"}}>{r.description}</div>
-              </div>
+      {/* Chips row — scrollable on mobile */}
+      <div style={{display:"flex",gap:5,overflowX:"auto",scrollbarWidth:"none",msOverflowStyle:"none",paddingBottom:2,WebkitOverflowScrolling:"touch"}}>
+        {PROVIDERS.map(p=>{
+          const sel = value===p.id;
+          return(
+            <button key={p.id}
+              onClick={()=>p.enabled&&onChange(p.id)}
+              onMouseEnter={()=>setTooltip(p.id)}
+              onMouseLeave={()=>setTooltip(null)}
+              title={PROVIDER_INFO[p.id]}
+              style={{
+                flexShrink:0,
+                display:"flex",alignItems:"center",gap:4,
+                padding:"5px 11px",borderRadius:20,
+                background: sel?"#111111":T.bgSubtle,
+                border: `1px solid ${sel?"#111111":T.border}`,
+                color: sel?"#FFFFFF":p.enabled?T.textSec:T.textTert,
+                fontSize:12,fontFamily:"inherit",
+                cursor:p.enabled?"pointer":"default",
+                opacity:p.enabled?1:.5,
+                transition:"all .15s ease",
+                whiteSpace:"nowrap",
+                fontWeight: sel?500:400,
+              }}
+            >
+              {p.id==="auto"&&<span style={{fontSize:11}}>✨</span>}
+              <span>{p.id==="auto"?"Automático":p.label}</span>
             </button>
-          ))}
-        </div>
-        <div style={{marginTop:8,fontSize:11,color:"#282838",fontFamily:"'DM Sans',sans-serif"}}>Seleccioná un enfoque para continuar.</div>
+          );
+        })}
+      </div>
+      {/* Active model tooltip */}
+      <div style={{marginTop:6,fontSize:11,color:T.textTert,minHeight:14,transition:"opacity .15s",opacity:tooltip?1:.6}}>
+        {tooltip ? PROVIDER_INFO[tooltip] : (value==="auto" ? "Neura elige por vos la IA más adecuada." : `Usando ${PROVIDERS.find(p=>p.id===value)?.label||value} para esta conversación.`)}
       </div>
     </div>
   );
 }
 
-function Sidebar({onNew,projects=[],tasks=[],onOpen,onSignOut,session,onOpenCodex}) {
-  const [view,setView]=useState(null);
-  const [q,setQ]=useState("");
-  const user=session?.user?.email?.split("@")[0]||"Usuario";
-  const init=user[0].toUpperCase();
-  const recent=[...projects].sort((a,b)=>((b.updatedAt||b.updated_at||"")>=(a.updatedAt||a.updated_at||""))?1:-1).slice(0,7);
-  const results=q?projects.filter(p=>(p.title||"").toLowerCase().includes(q.toLowerCase())):[];
-  const AC="#00E5FF"; const BD="rgba(0,229,255,.1)"; const BASE="rgba(5,7,19,.95)";
+// Keep ModelSelector as alias for backwards compat
+function ModelSelector({ value, onChange }) {
+  return <ModelChips value={value} onChange={onChange}/>;
+}
 
-  const go=p=>{onOpen&&onOpen(p);setView(null);};
+// ─── VOICE BUTTON ─────────────────────────────────────────────────────────────
+function VoiceButton({ onTranscript, size="lg" }) {
+  const [state, setState] = useState("idle"); // idle | listening | transcribing | error
+  const recogRef = useRef(null);
 
-  const SBHeader=({label})=>(
-    <div style={{borderBottom:`1px solid ${BD}`,flexShrink:0}}>
-      <div style={{padding:"14px 16px 10px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${BD}`}}>
-        <Logo size={20}/><span style={{fontFamily:"'Orbitron',monospace",fontWeight:700,fontSize:12,letterSpacing:".2em",color:"#F4F7FF"}}>NEURA</span>
-      </div>
-      <button onClick={()=>setView(null)} style={{display:"flex",alignItems:"center",gap:7,padding:"9px 14px",color:"#606880",fontSize:12,fontFamily:"'DM Sans',sans-serif",width:"100%",transition:"all .15s ease",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color=AC} onMouseLeave={e=>e.currentTarget.style.color="#606880"}>
-        <I.Back/>{label}
+  const toggle = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert("Tu navegador no soporta reconocimiento de voz. Probá Chrome."); return; }
+    if (state === "listening") {
+      recogRef.current?.stop();
+      setState("idle");
+      return;
+    }
+    const r = new SR();
+    r.lang = "es-AR";
+    r.continuous = false;
+    r.interimResults = false;
+    r.onstart = () => setState("listening");
+    r.onresult = e => {
+      setState("transcribing");
+      const t = e.results[0][0].transcript;
+      onTranscript(t);
+      setTimeout(()=>setState("idle"),600);
+    };
+    r.onerror = () => { setState("error"); setTimeout(()=>setState("idle"),1500); };
+    r.onend = () => { if(state!=="transcribing") setState("idle"); };
+    recogRef.current = r;
+    r.start();
+  };
+
+  const isLg = size === "lg";
+  const dim = isLg ? 64 : 36;
+  const colors = {
+    idle:        { bg: "#6D28D9", color: "white", shadow: "0 2px 12px rgba(109,40,217,.3)" },
+    listening:   { bg: "#DC2626", color: "white", shadow: "0 2px 16px rgba(220,38,38,.4)" },
+    transcribing:{ bg: "#059669", color: "white", shadow: "0 2px 12px rgba(5,150,105,.3)" },
+    error:       { bg: "#9CA3AF", color: "white", shadow: "none" },
+  };
+  const c = colors[state];
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+      <button onClick={toggle} title={state==="listening"?"Detener":"Hablar"}
+        style={{width:dim,height:dim,borderRadius:"50%",background:c.bg,border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:c.color,boxShadow:c.shadow,transition:"all .25s ease",transform:state==="listening"?"scale(1.08)":"scale(1)",animation:state==="listening"?"voicePulse 1.4s ease-in-out infinite":"none"}}>
+        <Icon.Mic/>
       </button>
+      {isLg&&<span style={{fontSize:12,color:T.textTert,fontWeight:400}}>
+        {state==="idle"?"Hablá con Neura":state==="listening"?"Te escucho…":state==="transcribing"?"Entendiendo…":"Intente de nuevo"}
+      </span>}
     </div>
   );
+}
 
-  const SBFooter=()=>(
-    <div style={{padding:"10px 14px",borderTop:`1px solid ${BD}`,display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-      <div style={{width:26,height:26,borderRadius:"50%",background:"rgba(0,229,255,.1)",border:`1px solid ${BD}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontFamily:"'Syne',sans-serif",fontWeight:700,color:AC,flexShrink:0}}>{init}</div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:12,fontFamily:"'DM Sans',sans-serif",color:"#B8C2E8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user[0].toUpperCase()+user.slice(1)}</div>
-        <div style={{fontSize:10,color:"#333355",fontFamily:"'DM Sans',sans-serif",marginTop:1}}>Plan Maestro</div>
-      </div>
-      {USE_SUPABASE&&onSignOut&&<button onClick={onSignOut} style={{color:"#333",flexShrink:0,transition:"all .2s ease",display:"flex",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#ff6b6b"} onMouseLeave={e=>e.currentTarget.style.color="#333"}><I.LogOut/></button>}
-    </div>
-  );
+// ─── MESSAGE BUBBLE ───────────────────────────────────────────────────────────
+function Message({ msg, onCopy }) {
+  const isUser = msg.role === "user";
+  const [copied, setCopied] = useState(false);
 
-  const RecentList=({pick})=>(
-    <>
-      {recent.length>0&&<div style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".16em",color:"#252535",padding:"8px 16px 4px"}}>RECIENTE</div>}
-      {recent.map(p=>(
-        <button key={p.id} onClick={()=>pick(p)} style={{width:"calc(100% - 8px)",margin:"0 4px",textAlign:"left",padding:"7px 10px",borderRadius:7,display:"flex",flexDirection:"column",gap:2,background:"transparent",transition:"all .15s ease",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.04)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-          <div style={{display:"flex",alignItems:"center",gap:5,minWidth:0}}>
-            {p.status==="LIVE"&&<span style={{width:4,height:4,borderRadius:"50%",background:AC,flexShrink:0,animation:"blink 2s infinite",display:"inline-block"}}/>}
-            <span style={{fontSize:12,fontFamily:"'DM Sans',sans-serif",color:"#7880a8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{p.title}</span>
-          </div>
-          <span style={{fontSize:10,color:"#252535",paddingLeft:p.status==="LIVE"?10:0}}>{timeAgo(p.updatedAt||p.updated_at||p.createdAt)}</span>
-        </button>
-      ))}
-    </>
-  );
+  const copy = () => {
+    navigator.clipboard?.writeText(msg.content||"").then(()=>{setCopied(true);setTimeout(()=>setCopied(false),1500);});
+  };
 
-  if(view==="search")return(
-    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20}}>
-      <SBHeader label="Buscar chat"/>
-      <div style={{padding:"10px 12px 6px",flexShrink:0}}>
-        <div style={{position:"relative"}}>
-          <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#606880",display:"flex",pointerEvents:"none"}}><I.Search/></span>
-          <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar..." style={{width:"100%",background:"rgba(255,255,255,.04)",border:`1px solid ${BD}`,borderRadius:8,padding:"8px 10px 8px 32px",color:"#E8EEF8",fontSize:13,fontFamily:"'DM Sans',sans-serif"}}/>
-        </div>
-      </div>
-      <div style={{flex:1,overflowY:"auto",scrollbarWidth:"none"}}>
-        {q&&!results.length?<div style={{padding:20,textAlign:"center",fontSize:12,color:"#404060",fontFamily:"'DM Sans',sans-serif"}}>Sin resultados</div>
-        :q?results.map(p=>(<button key={p.id} onClick={()=>go(p)} style={{width:"100%",textAlign:"left",padding:"9px 14px",background:"transparent",display:"flex",flexDirection:"column",gap:2,transition:"all .15s ease",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,.04)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><span style={{fontSize:12,color:"#B8C2E8",fontFamily:"'DM Sans',sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</span></button>))
-        :<RecentList pick={go}/>}
-      </div>
-      <SBFooter/>
-    </div>
-  );
-
-  if(view==="memory")return(
-    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20}}>
-      <SBHeader label={`Memoria · ${projects.length} op${projects.length!==1?"s":""}`}/>
-      <div style={{flex:1,overflowY:"auto",padding:"6px 4px",scrollbarWidth:"none"}}>
-        {!projects.length?<div style={{padding:24,textAlign:"center",fontSize:12,color:"#404060",fontFamily:"'DM Sans',sans-serif"}}>Las conversaciones aparecerán aquí.</div>
-        :projects.map(p=>(<button key={p.id} onClick={()=>go(p)} style={{width:"100%",textAlign:"left",padding:"9px 12px",borderRadius:8,background:"transparent",border:"1px solid transparent",display:"flex",flexDirection:"column",gap:3,marginBottom:2,transition:"all .15s ease",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,.04)";e.currentTarget.style.borderColor=BD;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="transparent";}}>
-          <div style={{display:"flex",alignItems:"center",gap:6,minWidth:0}}>
-            {p.status==="LIVE"&&<span style={{width:4,height:4,borderRadius:"50%",background:AC,flexShrink:0,animation:"blink 2s infinite",display:"inline-block"}}/>}
-            <span style={{fontSize:12,fontFamily:"'DM Sans',sans-serif",color:"#B8C2E8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,fontWeight:500}}>{p.title}</span>
-          </div>
-          <span style={{fontSize:9,color:"#252535",paddingLeft:p.status==="LIVE"?10:0}}>{timeAgo(p.updatedAt||p.updated_at||p.createdAt||"")}</span>
-        </button>))}
-      </div>
-      <div style={{padding:"10px 12px",flexShrink:0,borderTop:`1px solid ${BD}`}}>
-        <button onClick={()=>{onNew();setView(null);}} style={{width:"100%",padding:"8px",borderRadius:8,background:"rgba(0,229,255,.06)",border:`1px solid ${BD}`,color:AC,fontSize:11,fontFamily:"'Syne',sans-serif",letterSpacing:".08em",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,229,255,.1)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(0,229,255,.06)"}>+ NUEVA OPERACIÓN</button>
-      </div>
-      <SBFooter/>
-    </div>
-  );
-
-  if(view==="library")return(
-    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20}}>
-      <SBHeader label="Base de Conocimiento"/>
-      <div style={{flex:1,padding:12,overflowY:"auto",scrollbarWidth:"none"}}>
-        {[{l:"Sistemas",v:projects.length,d:"Operaciones y pipelines"},{l:"Documentos",v:0,d:"PDFs y textos"},{l:"Outputs",v:0,d:"Resultados generados"}].map((c,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:10,borderRadius:8,marginBottom:4,border:`1px solid ${BD}`,background:"rgba(255,255,255,.02)"}}>
-            <div style={{width:28,height:28,borderRadius:7,background:"rgba(0,229,255,.06)",display:"flex",alignItems:"center",justifyContent:"center",color:c.v>0?AC:"#404060",flexShrink:0}}><I.Book/></div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:12,fontFamily:"'DM Sans',sans-serif",color:"#B8C2E8",fontWeight:500}}>{c.l}</div>
-              <div style={{fontSize:10,color:"#404060",fontFamily:"'DM Sans',sans-serif",marginTop:1}}>{c.d}</div>
+  return (
+    <div style={{display:"flex",gap:12,marginBottom:20,flexDirection:isUser?"row-reverse":"row",alignItems:"flex-start"}}>
+      {!isUser&&<div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",marginTop:2}}><NeuraLogo size={28}/></div>}
+      <div style={{maxWidth:"min(75%, 600px)",minWidth:40}}>
+        {isUser
+          ? <div style={{background:T.userBg,borderRadius:"16px 4px 16px 16px",padding:"10px 14px",color:T.textPrimary,fontSize:14,lineHeight:1.6,wordBreak:"break-word"}}>{msg.content}</div>
+          : <div>
+              <div style={{color:T.neuraText,fontSize:14,lineHeight:1.7,wordBreak:"break-word"}} dangerouslySetInnerHTML={{__html:renderMarkdown(msg.content)||"<span style='color:#9CA3AF'>▍</span>"}}/>
+              {msg.content&&<div style={{display:"flex",gap:8,marginTop:8,alignItems:"center"}}>
+                {msg.provider&&<span style={{fontSize:10,color:T.textTert,fontFamily:"inherit"}}>{msg.provider}</span>}
+                <button onClick={copy} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 7px",borderRadius:5,background:"transparent",border:`1px solid ${copied?"#D1FAE5":"transparent"}`,color:copied?"#059669":T.textTert,fontSize:11,cursor:"pointer",transition:"all .15s",fontFamily:"inherit"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.textSec;}} onMouseLeave={e=>{if(!copied){e.currentTarget.style.borderColor="transparent";e.currentTarget.style.color=T.textTert;}}}>
+                  <Icon.Copy/>{copied?"Copiado":"Copiar"}
+                </button>
+              </div>}
             </div>
-            <span style={{fontSize:11,fontFamily:"'Syne',sans-serif",color:c.v>0?AC:"#252535",fontWeight:600}}>{c.v}</span>
-          </div>
-        ))}
-        <div style={{marginTop:12,padding:12,borderRadius:8,background:"rgba(0,229,255,.03)",border:`1px solid ${BD}`}}>
-          <div style={{fontSize:11,color:"#404060",fontFamily:"'DM Sans',sans-serif",lineHeight:1.6,textAlign:"center"}}>El conocimiento que generes con NEURA se organiza aquí automáticamente.</div>
-        </div>
+        }
       </div>
-      <SBFooter/>
     </div>
   );
+}
 
-  return(
-    <div style={{width:SIDEBAR_W,flexShrink:0,display:"flex",flexDirection:"column",background:BASE,borderRight:`1px solid ${BD}`,zIndex:20,overflow:"hidden"}}>
-      <div style={{padding:"14px 16px 10px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${BD}`,flexShrink:0}}>
-        <Logo size={20}/><span style={{fontFamily:"'Orbitron',monospace",fontWeight:700,fontSize:12,letterSpacing:".2em",color:"#F4F7FF"}}>NEURA</span>
+// ─── CHAT COMPOSER ────────────────────────────────────────────────────────────
+function Composer({ onSend, isLoading, model, onModelChange }) {
+  const [text, setText] = useState("");
+  const [focused, setFocused] = useState(false);
+  const textRef = useRef(null);
+
+  const send = () => {
+    const t = text.trim();
+    if (!t || isLoading) return;
+    onSend(t);
+    setText("");
+    if (textRef.current) textRef.current.style.height = "auto";
+  };
+
+  const onKey = e => { if (e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); send(); } };
+  const onInput = e => {
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
+    setText(e.target.value);
+  };
+
+  return (
+    <div style={{padding:"12px 16px 16px",background:T.bg,borderTop:`1px solid ${T.border}`,flexShrink:0}}>
+      <div style={{maxWidth:720,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"flex-end",gap:0,background:T.bg,border:`1.5px solid ${focused?T.borderFocus:T.border}`,borderRadius:14,transition:"border-color .15s",padding:"10px 10px 10px 14px"}}>
+          <textarea ref={textRef} value={text} onChange={onInput} onKeyDown={onKey} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+            placeholder="Escribí lo que necesitás…" rows={1}
+            style={{flex:1,background:"transparent",border:"none",resize:"none",color:T.textPrimary,fontSize:15,lineHeight:1.55,outline:"none",maxHeight:140,overflowY:"auto",fontFamily:"inherit",padding:0}}
+          />
+          <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,paddingLeft:8}}>
+            <VoiceButton onTranscript={t=>{ setText(p=>p?p+" "+t:t); textRef.current?.focus(); }} size="sm"/>
+            <button onClick={send} disabled={!text.trim()||isLoading}
+              style={{width:36,height:36,borderRadius:10,background:text.trim()&&!isLoading?T.accent:"#E5E7EB",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:text.trim()&&!isLoading?"pointer":"default",color:"white",transition:"all .15s",flexShrink:0}}>
+              <Icon.Send/>
+            </button>
+          </div>
+        </div>
+        <div style={{marginTop:10}}>
+          <ModelChips value={model} onChange={onModelChange}/>
+        </div>
       </div>
-      <div style={{padding:"10px 10px 6px",flexShrink:0}}>
-        <button onClick={onNew} style={{width:"100%",display:"flex",alignItems:"center",gap:9,padding:"9px 14px",borderRadius:9,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.18)",color:"#E8EEF8",fontSize:13,fontFamily:"'DM Sans',sans-serif",fontWeight:500,transition:"all .18s ease",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(0,229,255,.13)";e.currentTarget.style.borderColor=AC;}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(0,229,255,.08)";e.currentTarget.style.borderColor="rgba(0,229,255,.18)";}}><I.Plus/> Nuevo chat</button>
+    </div>
+  );
+}
+
+// ─── HOME EMPTY STATE ─────────────────────────────────────────────────────────
+function HomeEmpty({ onSend, model, onModelChange }) {
+  const CHIPS = ["Necesito una idea de negocio","Redactá un email profesional","Explicame algo complejo","Ayudame a organizar un proyecto"];
+  const [focused, setFocused] = useState(false);
+  const [text, setText] = useState("");
+  const [voiceState, setVoiceState] = useState("idle");
+  const textRef = useRef(null);
+
+  const send = () => { if(text.trim()) { onSend(text.trim()); setText(""); } };
+  const onKey = e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();} };
+  const onInput = e => { e.target.style.height="auto"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; setText(e.target.value); };
+
+  return (
+    <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px 24px",overflowY:"auto"}}>
+      {/* Brand */}
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12,marginBottom:40}}>
+        <NeuraLogo size={48}/>
+        <div style={{textAlign:"center"}}>
+          <h1 style={{fontSize:28,fontWeight:700,color:T.textPrimary,letterSpacing:".08em",margin:0}}>NEURA</h1>
+          <p style={{fontSize:15,color:T.textSec,margin:"6px 0 0",fontWeight:400}}>¿Qué necesitás?</p>
+        </div>
       </div>
-      <div style={{padding:"4px 8px",flexShrink:0}}>
-        {[{k:"search",l:"Buscar chat",Ic:I.Search},{k:"library",l:"Base de Conocimiento",Ic:I.Book},{k:"memory",l:"Memoria",Ic:I.Memory}].map(({k,l,Ic})=>(
-          <button key={k} onClick={()=>setView(k)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:7,background:"transparent",color:"#6a7090",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .15s ease",textAlign:"left",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,.04)";e.currentTarget.style.color="#B8C2E8";}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#6a7090";}}>
-            <span style={{opacity:.55,flexShrink:0}}><Ic/></span><span>{l}</span>
+
+      {/* Voice CTA */}
+      <div style={{marginBottom:32}}>
+        <VoiceButton onTranscript={t=>{setText(p=>p?p+" "+t:t);textRef.current?.focus();}} size="lg"/>
+      </div>
+
+      {/* Text input */}
+      <div style={{width:"100%",maxWidth:560,marginBottom:16}}>
+        <div style={{background:T.bg,border:`1.5px solid ${focused?T.borderFocus:T.border}`,borderRadius:14,padding:"10px 10px 10px 14px",display:"flex",alignItems:"flex-end",gap:8,transition:"border-color .15s"}}>
+          <textarea ref={textRef} value={text} onChange={onInput} onKeyDown={onKey} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+            placeholder="o escribí lo que necesitás…" rows={1}
+            style={{flex:1,background:"transparent",border:"none",resize:"none",color:T.textPrimary,fontSize:15,lineHeight:1.55,outline:"none",maxHeight:120,fontFamily:"inherit",padding:0}}
+          />
+          <button onClick={send} disabled={!text.trim()} style={{width:36,height:36,borderRadius:10,background:text.trim()?T.accent:"#E5E7EB",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:text.trim()?"pointer":"default",color:"white",transition:"all .15s",flexShrink:0}}>
+            <Icon.Send/>
+          </button>
+        </div>
+        <div style={{marginTop:14}}>
+          <ModelChips value={model} onChange={onModelChange}/>
+        </div>
+      </div>
+
+      {/* Chips */}
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center",maxWidth:500}}>
+        {CHIPS.map(c=>(
+          <button key={c} onClick={()=>onSend(c)} style={{padding:"7px 13px",borderRadius:20,background:T.bgSubtle,border:`1px solid ${T.border}`,color:T.textSec,fontSize:12,cursor:"pointer",transition:"all .15s",fontFamily:"inherit",whiteSpace:"nowrap"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=T.borderFocus;e.currentTarget.style.color=T.textPrimary;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.textSec;}}>
+            {c}
           </button>
         ))}
       </div>
-      <div style={{height:1,background:"rgba(255,255,255,.04)",margin:"6px 14px",flexShrink:0}}/>
-      <div style={{flex:1,overflowY:"auto",scrollbarWidth:"none",minHeight:0,padding:"0 4px"}}>
-        <RecentList pick={onOpen}/>
-        {!recent.length&&<div style={{padding:16,textAlign:"center",fontSize:11,color:"#1e1e2e",fontFamily:"'DM Sans',sans-serif",lineHeight:1.6}}>Los chats aparecerán aquí</div>}
-      </div>
-      <SBFooter/>
     </div>
   );
 }
 
-function CodexWorkspace({onBack}) {
-  const [inp,setInp]=useState("");
-  const [result,setResult]=useState(null);
-  const [loading,setLoading]=useState(false);
-  const [connectors,setConnectors]=useState({gmail:true,slack:true,drive:false,whatsapp:false,stripe:false});
-  const APPS=[{id:"gmail",icon:"📧",l:"Gmail"},{id:"slack",icon:"💬",l:"Slack"},{id:"drive",icon:"🗂",l:"Drive"},{id:"whatsapp",icon:"📱",l:"WhatsApp"},{id:"stripe",icon:"💳",l:"Stripe"}];
-  const VT="#B45CFF";
-  const run=(action)=>{
-    if(!inp.trim()&&action!=="apps"){setResult("⚠ Describí la automatización primero.");return;}
-    setLoading(true);setResult(null);
-    setTimeout(()=>{
-      const active=Object.entries(connectors).filter(([,v])=>v).map(([k])=>k).join(", ");
-      const res={
-        simulate:`TRIGGER: "${inp.slice(0,35)}..."\n↓\nIA AGENT: Analiza → clasifica → genera respuesta\n↓\nACCIÓN: Ejecutar en ${active||"plataformas conectadas"}\n\n✓ Simulación completada — Score: 87/100\n📊 Cobertura: Alta | Velocidad: Óptima`,
-        apps:`⚙ Conectores activos: ${active||"ninguno"}\nActivá los que necesitás en el panel inferior.`,
-        create:`⚡ AUTOMATIZACIÓN CREADA\n\nNombre: Auto-${inp.slice(0,18)}\nEstado: ACTIVO\nPipeline: Trigger → IA → Acción (${active||"sin conectores"})\n\n→ Monitoreable desde Memoria.`,
-      }[action];
-      setResult(res);setLoading(false);
-    },1400);
-  };
-  const BD2="rgba(123,77,255,.15)";
-  const nodes=[{l:"TRIGGER",s:"Evento",x:20,c:"#35D8FF",ic:"⚡"},{l:"IA AGENT",s:"Procesa",x:190,c:"#00E5FF",ic:"🧠"},{l:"ACCIÓN",s:"Ejecuta",x:360,c:VT,ic:"🎯"}];
-  return(
-    <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,background:"#050713",overflow:"hidden"}}>
+// ─── SIDEBAR ──────────────────────────────────────────────────────────────────
+function Sidebar({ convs, activeId, onNew, onSelect, onDelete, onClose, isMobile }) {
+  const groups = { Hoy: [], Ayer: [], "Esta semana": [], Antes: [] };
+  const now = new Date();
+  convs.forEach(c => {
+    const d = new Date(c.updatedAt||c.createdAt);
+    const diffDays = (now - d) / (1000*60*60*24);
+    if (diffDays < 1) groups.Hoy.push(c);
+    else if (diffDays < 2) groups.Ayer.push(c);
+    else if (diffDays < 7) groups["Esta semana"].push(c);
+    else groups.Antes.push(c);
+  });
+
+  return (
+    <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",background:T.bg,borderRight:`1px solid ${T.border}`,overflow:"hidden"}}>
       {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",height:50,background:"rgba(5,7,19,.97)",borderBottom:"1px solid rgba(123,77,255,.2)",flexShrink:0}}>
-        <div style={{display:"flex",alignItems:"center",gap:14}}>
-          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:6,color:"#4050a0",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#8090d0"} onMouseLeave={e=>e.currentTarget.style.color="#4050a0"}><I.Back/>Inicio</button>
-          <div style={{width:1,height:14,background:"rgba(255,255,255,.06)"}}/>
-          <span style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".15em",color:VT,opacity:.8}}>⚡ CODEX</span>
+      <div style={{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,borderBottom:`1px solid ${T.border}`}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <NeuraLogo size={22}/>
+          <span style={{fontWeight:700,fontSize:14,letterSpacing:".1em",color:T.textPrimary}}>NEURA</span>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 10px",borderRadius:5,background:"rgba(123,77,255,.08)",border:"1px solid rgba(123,77,255,.2)"}}>
-          <span style={{width:4,height:4,borderRadius:"50%",background:VT,animation:"blink 2s infinite",display:"inline-block"}}/>
-          <span style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:VT}}>MOTOR DE AUTOMATIZACIÓN</span>
-        </div>
+        {isMobile&&<button onClick={onClose} style={{color:T.textTert,cursor:"pointer",display:"flex"}}><Icon.X/></button>}
       </div>
-      {/* Body */}
-      <div style={{flex:1,overflowY:"auto",padding:20,scrollbarWidth:"none"}}>
-        <div style={{maxWidth:800,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
-          {/* Canvas */}
-          <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(123,77,255,.15)",borderRadius:14,padding:"18px 20px"}}>
-            <div style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".14em",color:VT,opacity:.6,marginBottom:14}}>CANVAS COGNITIVO</div>
-            <svg width="100%" height="110" viewBox="0 0 520 100" style={{overflow:"visible"}}>
-              <defs><marker id="ca" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="rgba(0,229,255,.45)"/></marker></defs>
-              <line x1="132" y1="50" x2="188" y2="50" stroke="rgba(0,229,255,.3)" strokeWidth="1.5" strokeDasharray="4,3" markerEnd="url(#ca)"/>
-              <line x1="302" y1="50" x2="358" y2="50" stroke="rgba(123,77,255,.3)" strokeWidth="1.5" strokeDasharray="4,3" markerEnd="url(#ca)"/>
-              {nodes.map((n,i)=>(
-                <g key={i} transform={`translate(${n.x},15)`}>
-                  <rect width="112" height="70" rx="10" fill="rgba(255,255,255,.03)" stroke={n.c} strokeWidth="1.2" strokeOpacity=".3"/>
-                  <text x="10" y="26" fill={n.c} fontSize="16">{n.ic}</text>
-                  <text x="32" y="24" fill={n.c} fontSize="9" fontFamily="Syne,sans-serif" fontWeight="700" letterSpacing="1">{n.l}</text>
-                  <text x="10" y="54" fill="rgba(255,255,255,.35)" fontSize="10" fontFamily="DM Sans,sans-serif">{n.s}</text>
-                  <circle cx="56" cy="74" r="3" fill={n.c} opacity=".5" style={{animation:"blink 2s ease-in-out infinite"}}/>
-                </g>
-              ))}
-            </svg>
+
+      {/* New chat */}
+      <div style={{padding:"10px 12px",flexShrink:0}}>
+        <button onClick={onNew} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:9,background:T.accentSoft,border:`1px solid #DDD6FE`,color:T.accent,fontSize:13,fontWeight:500,cursor:"pointer",transition:"all .15s",fontFamily:"inherit"}} onMouseEnter={e=>e.currentTarget.style.background="#EDE9FE"} onMouseLeave={e=>e.currentTarget.style.background=T.accentSoft}>
+          <Icon.Plus/> Nuevo chat
+        </button>
+      </div>
+
+      {/* Conversation list */}
+      <div style={{flex:1,overflowY:"auto",padding:"0 8px",scrollbarWidth:"none"}}>
+        {Object.entries(groups).map(([group,items])=>items.length===0?null:(
+          <div key={group} style={{marginBottom:8}}>
+            <div style={{fontSize:10,fontWeight:600,color:T.textTert,letterSpacing:".08em",padding:"6px 8px 3px",textTransform:"uppercase"}}>{group}</div>
+            {items.map(c=>(
+              <div key={c.id} style={{display:"flex",alignItems:"center",gap:1,borderRadius:8,background:activeId===c.id?"#F5F3FF":"transparent",marginBottom:1}} onMouseEnter={e=>{if(activeId!==c.id)e.currentTarget.style.background=T.bgSubtle;}} onMouseLeave={e=>{if(activeId!==c.id)e.currentTarget.style.background="transparent";}}>
+                <button onClick={()=>onSelect(c.id)} style={{flex:1,textAlign:"left",padding:"7px 8px",borderRadius:8,color:activeId===c.id?T.accent:T.textSec,fontSize:13,cursor:"pointer",background:"transparent",border:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontFamily:"inherit",fontWeight:activeId===c.id?500:400}}>
+                  {c.title||"Sin título"}
+                </button>
+                <button onClick={e=>{e.stopPropagation();onDelete(c.id);}} style={{flexShrink:0,padding:"6px",color:T.textTert,background:"transparent",border:"none",cursor:"pointer",borderRadius:6,display:"none"}} className="del-btn" onMouseEnter={e=>e.currentTarget.style.color="#EF4444"} onMouseLeave={e=>e.currentTarget.style.color=T.textTert}>
+                  <Icon.Trash/>
+                </button>
+              </div>
+            ))}
           </div>
-          {/* Input */}
-          <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(0,229,255,.1)",borderRadius:14,padding:"18px 20px"}}>
-            <div style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".14em",color:"#00E5FF",opacity:.6,marginBottom:12}}>INSTRUCCIÓN</div>
-            <textarea value={inp} onChange={e=>setInp(e.target.value)} placeholder="Decime qué querés automatizar..." rows={2}
-              style={{width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",resize:"none",lineHeight:1.55,marginBottom:12}}/>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {[{l:"▶ SIMULAR",a:"simulate",bg:"rgba(0,229,255,.08)",bc:"rgba(0,229,255,.25)",c:"#00E5FF"},
-                {l:"⚙ CONECTAR APPS",a:"apps",bg:"rgba(255,255,255,.04)",bc:"rgba(255,255,255,.1)",c:"#B8C2E8"},
-                {l:"⚡ CREAR AUTO",a:"create",bg:"linear-gradient(135deg,rgba(53,216,255,.12),rgba(123,77,255,.18))",bc:"rgba(123,77,255,.3)",c:"#E8EEF8"}
-              ].map(({l,a,bg,bc,c})=>(
-                <button key={a} onClick={()=>run(a)} style={{padding:"9px 16px",borderRadius:8,background:bg,border:`1px solid ${bc}`,color:c,fontSize:12,fontFamily:"'Syne',sans-serif",letterSpacing:".06em",fontWeight:600,cursor:"pointer",transition:"all .2s ease"}} onMouseEnter={e=>e.currentTarget.style.opacity=".75"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>{l}</button>
-              ))}
-            </div>
-            {loading&&<div style={{marginTop:14,display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:10,background:"rgba(255,255,255,.03)",border:"1px solid rgba(0,229,255,.1)"}}>
-              <span style={{width:6,height:6,borderRadius:"50%",background:"#00E5FF",display:"inline-block",animation:"blink 1.2s ease-in-out infinite"}}/><span style={{fontSize:13,color:"#606880",fontStyle:"italic"}}>Construyendo automatización...</span>
-            </div>}
-            {result&&<div style={{marginTop:14,padding:"14px 16px",borderRadius:10,background:"rgba(0,229,255,.04)",border:"1px solid rgba(0,229,255,.15)",animation:"fadeUp .3s ease"}}>
-              <div style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".12em",color:"#00E5FF",marginBottom:8,opacity:.7}}>PIPELINE GENERADO</div>
-              <div style={{fontSize:13,color:"#B8C2E8",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{result}</div>
-            </div>}
-          </div>
-          {/* Connectors */}
-          <div style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)",borderRadius:14,padding:"18px 20px"}}>
-            <div style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".14em",color:"#606880",marginBottom:14}}>PANEL DE CONECTORES</div>
-            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              {APPS.map(({id,icon,l})=>{
-                const on=connectors[id];
-                return(<button key={id} onClick={()=>setConnectors(p=>({...p,[id]:!p[id]}))}
-                  style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,padding:"14px 18px",borderRadius:12,background:on?"rgba(0,229,255,.06)":"rgba(255,255,255,.02)",border:`1px solid ${on?"rgba(0,229,255,.25)":"rgba(255,255,255,.06)"}`,color:on?"#E8EEF8":"#404060",transition:"all .2s ease",cursor:"pointer",minWidth:72}}>
-                  <span style={{fontSize:20}}>{icon}</span>
-                  <span style={{fontSize:10,fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>{l}</span>
-                  <span style={{fontSize:8,fontFamily:"'Syne',sans-serif",letterSpacing:".08em",color:on?"#00E5FF":"#252535"}}>{on?"ACTIVO":"OFF"}</span>
-                </button>);
-              })}
-            </div>
-          </div>
-        </div>
+        ))}
+        {convs.length===0&&<div style={{padding:"20px 8px",textAlign:"center",fontSize:12,color:T.textTert,lineHeight:1.6}}>Tus conversaciones aparecerán acá</div>}
+      </div>
+
+      {/* Footer */}
+      <div style={{padding:"10px 14px 14px",borderTop:`1px solid ${T.border}`,flexShrink:0}}>
+        <div style={{fontSize:11,color:T.textTert,textAlign:"center"}}>neura.ar</div>
       </div>
     </div>
   );
 }
 
-function Home({onSend,selectedMode,onMode,isThinking}) {
-  const [input,setInput]=useState("");
-  const [focused,setFocused]=useState(false);
-  const [img,setImg]=useState(null);
-  const fileRef=useRef(null);
-  const modeKeys=Object.keys(MODES);
-
-  const handleFile=f=>{
-    if(!f||!f.type.startsWith("image/"))return;
-    const r=new FileReader(); r.onload=e=>setImg({base64:e.target.result.split(",")[1],mediaType:f.type,preview:e.target.result}); r.readAsDataURL(f);
-  };
-  const send=()=>{ if(!input.trim()&&!img)return; onSend(input.trim(),img); setInput(""); setImg(null); };
-
-  return(
-    <div style={{flex:1,position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",background:"#050713"}}>
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 70% 60% at 55% 40%,rgba(53,216,255,.09) 0%,transparent 55%)",zIndex:0}}/>
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 70% 60% at 70% 35%,rgba(123,77,255,.14) 0%,transparent 60%)",zIndex:0}}/>
-      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"0 32px 20px",position:"relative",zIndex:1}}>
-        <div style={{marginBottom:18,animation:isThinking?"orbThink 1.1s ease-in-out infinite":"orbBreath 4s ease-in-out infinite",willChange:"transform,filter"}}>
-          <Logo size={68}/>
-        </div>
-        <div style={{fontFamily:"'Orbitron',monospace",fontSize:34,fontWeight:700,letterSpacing:".3em",color:"#F4F7FF",marginBottom:6,textAlign:"center",textShadow:"0 0 14px rgba(53,216,255,.15)"}}>NEURA</div>
-        <div style={{fontSize:11,color:"#8D96C8",letterSpacing:".26em",fontFamily:"'Syne',sans-serif",marginBottom:28,textAlign:"center"}}>SISTEMA OPERATIVO COGNITIVO</div>
-        <div style={{width:"100%",maxWidth:600,marginBottom:14}}>
-          {img&&(
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"7px 12px",borderRadius:9,background:"rgba(255,107,107,.05)",border:"1px solid rgba(255,107,107,.14)"}}>
-              <img src={img.preview} alt="" style={{width:26,height:26,objectFit:"cover",borderRadius:5}}/>
-              <span style={{flex:1,fontSize:10,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:"#ff6b6b"}}>ASSET LISTO</span>
-              <button onClick={()=>setImg(null)} style={{color:"#ff6b6b",display:"flex",cursor:"pointer"}}><I.Close/></button>
+// ─── INSTALL PWA BANNER ───────────────────────────────────────────────────────
+function InstallBanner({ onDismiss }) {
+  const [step, setStep] = useState(null);
+  return (
+    <div style={{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 32px)",maxWidth:400,background:T.bg,border:`1px solid ${T.border}`,borderRadius:14,padding:"14px 16px",boxShadow:"0 4px 24px rgba(0,0,0,.08)",zIndex:200}}>
+      {!step
+        ? <>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+              <span style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>Tené Neura siempre a mano</span>
+              <button onClick={onDismiss} style={{color:T.textTert,cursor:"pointer",display:"flex"}}><Icon.X/></button>
             </div>
-          )}
-          <div style={{background:"rgba(255,255,255,.055)",backdropFilter:"blur(24px)",border:`1px solid ${focused?"rgba(0,229,255,.55)":"rgba(120,150,255,.28)"}`,borderRadius:16,padding:"18px 18px 12px",boxShadow:focused?"0 0 40px rgba(0,229,255,.1)":"0 8px 40px rgba(0,0,0,.35)",transition:"all .3s ease"}}>
-            <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} placeholder={img?"Agregá contexto...":"¿Qué querés construir hoy?"} rows={1} style={{width:"100%",background:"transparent",border:"none",color:"#F4F7FF",fontSize:16,fontFamily:"'DM Sans',sans-serif",resize:"none",lineHeight:1.5,maxHeight:120,overflow:"auto",fontWeight:300,marginBottom:12,letterSpacing:".01em",cursor:"text"}} onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}/>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{handleFile(e.target.files?.[0]);e.target.value="";}}/>
-              {[{Ic:I.Clip,a:()=>fileRef.current&&fileRef.current.click()},{Ic:I.Mic,a:()=>{}}].map(({Ic,a},i)=>(
-                <button key={i} onClick={a} style={{width:32,height:32,borderRadius:8,background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.06)",display:"flex",alignItems:"center",justifyContent:"center",color:"#6F789F",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.background="rgba(0,229,255,.08)";e.currentTarget.style.color="#00E5FF";}} onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,.05)";e.currentTarget.style.color="#6F789F";}}><Ic/></button>
-              ))}
-              <div style={{flex:1}}/>
-              <button onClick={()=>{const keys=modeKeys;onMode(keys[(keys.indexOf(selectedMode)+1)%keys.length]);}} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:7,background:"rgba(0,229,255,.05)",border:"1px solid rgba(0,229,255,.12)",color:MODES[selectedMode].color,fontSize:11,fontFamily:"'Syne',sans-serif",letterSpacing:".06em",transition:"all .18s ease",opacity:.8,cursor:"pointer"}} onMouseEnter={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.borderColor="rgba(0,229,255,.3)";}} onMouseLeave={e=>{e.currentTarget.style.opacity=".8";e.currentTarget.style.borderColor="rgba(0,229,255,.12)";}}>
-                {MODES[selectedMode].label}<I.ChevD/>
-              </button>
-              <button onClick={send} disabled={!input.trim()&&!img} style={{width:38,height:38,borderRadius:"50%",background:(input.trim()||img)?"linear-gradient(135deg,#35D8FF,#7B4DFF)":"rgba(255,255,255,.05)",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s ease",color:"#fff",opacity:(input.trim()||img)?1:.25,boxShadow:(input.trim()||img)?"0 0 22px rgba(0,229,255,.35)":"none",cursor:"pointer"}}><I.ArrowUp/></button>
+            <p style={{fontSize:12,color:T.textSec,marginBottom:12}}>Agregala a tu pantalla de inicio y usala como una app.</p>
+            <button onClick={()=>setStep("ios")} style={{width:"100%",padding:"9px",borderRadius:9,background:T.accent,border:"none",color:"white",fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>Ver cómo instalar</button>
+          </>
+        : <>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <span style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>Instalá NEURA</span>
+              <button onClick={onDismiss} style={{color:T.textTert,cursor:"pointer",display:"flex"}}><Icon.X/></button>
             </div>
-          </div>
-        </div>
-        <div style={{width:"100%",maxWidth:600,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-          {modeKeys.map(k=>{
-            const m=MODES[k]; const sel=selectedMode===k;
-            return(
-              <button key={k} onClick={()=>onMode(k)} style={{padding:"12px 10px 16px",borderRadius:10,background:sel?"rgba(0,229,255,.07)":"rgba(255,255,255,.02)",border:`1px solid ${sel?"rgba(0,229,255,.28)":"rgba(255,255,255,.06)"}`,textAlign:"left",transition:"all .2s ease",display:"flex",flexDirection:"column",gap:5,position:"relative",cursor:"pointer"}} onMouseEnter={e=>{if(!sel){e.currentTarget.style.background="rgba(0,229,255,.04)";e.currentTarget.style.borderColor="rgba(0,229,255,.15)";} }} onMouseLeave={e=>{if(!sel){e.currentTarget.style.background="rgba(255,255,255,.02)";e.currentTarget.style.borderColor="rgba(255,255,255,.06)";}}}>
-                <div style={{width:5,height:5,borderRadius:"50%",background:sel?m.color:"rgba(255,255,255,.15)",boxShadow:sel?`0 0 6px ${m.color}`:"none",transition:"all .2s ease"}}/>
-                <div style={{fontSize:11,fontFamily:"'DM Sans',sans-serif",color:sel?"#F4F7FF":"#7080a0",fontWeight:sel?600:400,marginBottom:1}}>{m.label}</div>
-                <div style={{fontSize:10,fontFamily:"'DM Sans',sans-serif",color:"#3a3a5a",lineHeight:1.4}}>{m.sub}</div>
-              </button>
-            );
-          })}
-        </div>
-        <div style={{marginTop:20,fontSize:11,color:"#7F88B8",fontFamily:"'DM Sans',sans-serif",letterSpacing:".04em"}}>Neura está listo para ayudarte</div>
-      </div>
+            {["1. Tocá el botón Compartir (cuadrado con flecha)","2. Elegí «Añadir a pantalla de inicio»","3. Tocá Agregar"].map((s,i)=>(
+              <div key={i} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:T.accentSoft,color:T.accent,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
+                <span style={{fontSize:12,color:T.textSec,lineHeight:1.5}}>{s.slice(3)}</span>
+              </div>
+            ))}
+          </>
+      }
     </div>
   );
 }
 
-const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Syne:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
-*{box-sizing:border-box;margin:0;padding:0;border:0;outline:none;background:none;}
-button{cursor:pointer;} textarea,input{cursor:text;outline:none;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
-@keyframes blink{0%,100%{opacity:.3;}50%{opacity:1;}}
-@keyframes orbBreath{0%,100%{transform:translateY(0);filter:drop-shadow(0 0 18px rgba(53,216,255,.5)) drop-shadow(0 0 40px rgba(123,77,255,.35));}50%{transform:translateY(-6px);filter:drop-shadow(0 0 30px rgba(53,216,255,.75)) drop-shadow(0 0 65px rgba(123,77,255,.55));}}
-@keyframes orbThink{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-4px) scale(1.04);}}
-::-webkit-scrollbar{display:none;}
+// ─── CSS ──────────────────────────────────────────────────────────────────────
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;}
+html,body,#root{height:100%;height:-webkit-fill-available;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",sans-serif;background:#fff;color:#111;overscroll-behavior:none;min-height:100vh;min-height:-webkit-fill-available;}
+textarea,input{font-family:inherit;font-size:16px!important;}
+button{font-family:inherit;cursor:pointer;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#E5E5E5;border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:#C0C0C0;}
+.del-btn{display:none!important;}
+[style*="borderRadius:8px"]:hover .del-btn,[style*="borderRadius: 8px"]:hover .del-btn{display:flex!important;}
+pre{background:#F9F9F9;border:1px solid #E5E5E5;border-radius:8px;padding:14px;overflow-x:auto;margin:10px 0;}
+code{font-family:"SF Mono","Fira Code",monospace;font-size:13px;background:#F3F4F6;padding:1px 5px;border-radius:3px;}
+pre code{background:transparent;padding:0;}
+h1,h2,h3{margin:12px 0 6px;color:#111;}
+h1{font-size:18px;}h2{font-size:16px;}h3{font-size:15px;}
+ul,ol{padding-left:20px;margin:6px 0;}
+li{margin:3px 0;}
+p{margin:4px 0;}
+@keyframes voicePulse{0%,100%{box-shadow:0 0 0 0 rgba(109,40,217,.3);}50%{box-shadow:0 0 0 10px rgba(109,40,217,0);}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+.msg-in{animation:fadeUp .2s ease;}
 `;
 
-export default function NEURA() {
-  const [authReady,setAuthReady]=useState(false);
-  const [session,setSession]=useState(null);
-  const [authMode,setAuthMode]=useState("login");
-  const [authEmail,setAuthEmail]=useState("");
-  const [authPass,setAuthPass]=useState("");
-  const [authErr,setAuthErr]=useState("");
-  const [authLoad,setAuthLoad]=useState(false);
-  const [projects,setProjects]=useState([]);
-  const [tasks,setTasks]=useState([]);
-  const [messages,setMessages]=useState([]);
-  const [input,setInput]=useState("");
-  const [loading,setLoading]=useState(false);
-  const [activeProject,setActiveProject]=useState(null);
-  const [showWelcome,setShowWelcome]=useState(true);
-  const [showCodex,setShowCodex]=useState(false);
-  const [selectedMode,setSelectedMode]=useState("contextual");
-  const [attachedImage,setAttachedImage]=useState(null);
-  const [activeAgents,setActiveAgents]=useState([]);
-  const chatRef=useRef(null);
-  const projRef=useRef(null);
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+export default function App() {
+  const [convs, setConvs] = useState(getConvs);
+  const [activeId, setActiveId] = useState(null);
+  const [model, setModel] = useState("auto");
+  const [loading, setLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showInstall, setShowInstall] = useState(false);
+  const bottomRef = useRef(null);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
-  useEffect(()=>{projRef.current=activeProject;},[activeProject]);
-  useEffect(()=>{ if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight;},[messages,loading]);
+  // Active conversation
+  const activeConv = convs.find(c=>c.id===activeId)||null;
+  const messages = activeConv?.messages||[];
 
+  // Show PWA install banner on iOS Safari
   useEffect(()=>{
-    (async()=>{
-      try{
-        if(USE_SUPABASE){
-          try{
-            const saved=await sg("neura-session");
-            if(saved&&saved.refresh_token){
-              const r=await sb.refresh(saved.refresh_token);
-              if(r&&r.access_token){store.uid=r.user.id;await ss("neura-session",r);setSession(r);}
-            }
-          }catch(e){console.warn(e);}
-        }else{
-          try{
-            const [ps,ts]=await Promise.all([store.getProjects(),store.getTasks()]);
-            setProjects(Array.isArray(ps)?ps:[]);
-            setTasks(Array.isArray(ts)?ts:[]);
-          }catch(e){console.warn(e);}
-          setSession({user:{id:"local",email:"usuario@neura.app"}});
-        }
-      }catch(e){console.warn(e);}
-      finally{setAuthReady(true);}
-    })();
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode:standalone)').matches;
+    const dismissed = localStorage.getItem("neura-install-dismissed");
+    if (isIOS && !isStandalone && !dismissed) {
+      setTimeout(()=>setShowInstall(true), 3000);
+    }
   },[]);
 
-  const signIn=async()=>{
-    setAuthLoad(true);setAuthErr("");
-    try{const r=await sb.signIn(authEmail,authPass);if(r.error){setAuthErr(r.error.message||"Error.");return;}store.uid=r.user.id;await ss("neura-session",r);setSession(r);const [ps,ts]=await Promise.all([store.getProjects(),store.getTasks()]);setProjects(Array.isArray(ps)?ps:[]);setTasks(Array.isArray(ts)?ts:[]);}
-    catch{setAuthErr("Error de conexión.");}finally{setAuthLoad(false);}
-  };
-  const signUp=async()=>{
-    setAuthLoad(true);setAuthErr("");
-    try{const r=await sb.signUp(authEmail,authPass);if(r.error){setAuthErr(r.error.message||"Error.");return;}setAuthErr("✓ Verificá tu email.");}
-    catch{setAuthErr("Error de conexión.");}finally{setAuthLoad(false);}
-  };
-  const signOut=async()=>{
-    if(session&&session.access_token)await sb.signOut(session.access_token).catch(()=>{});
-    await sd("neura-session");setSession(null);setProjects([]);setTasks([]);setMessages([]);setActiveProject(null);setShowWelcome(true);
-  };
+  // Auto-scroll
+  useEffect(()=>{
+    bottomRef.current?.scrollIntoView({behavior:"smooth"});
+  },[messages.length, loading]);
 
-  const createProject=async firstMsg=>{
-    const p={id:genId(),title:buildTitle(firstMsg),status:"LIVE",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
-    try{await store.saveProject(p);}catch(e){console.warn(e);}
-    setProjects(prev=>[p,...prev]);projRef.current=p;setActiveProject(p);return p;
+  const newChat = () => { setActiveId(null); setSidebarOpen(false); };
+
+  const updateConv = (id, updater) => {
+    setConvs(prev => {
+      const updated = prev.map(c => c.id===id ? updater(c) : c);
+      saveConvs(updated);
+      return updated;
+    });
   };
 
-  const openProject=async p=>{
-    setActiveProject(p);projRef.current=p;
-    try{const msgs=await store.getMessages(p.id);setMessages(Array.isArray(msgs)?msgs:[]);}catch{setMessages([]);}
-    setShowWelcome(false);
+  const deleteConv = (id) => {
+    setConvs(prev => {
+      const updated = prev.filter(c=>c.id!==id);
+      saveConvs(updated);
+      return updated;
+    });
+    if (activeId===id) setActiveId(null);
   };
 
-  const newChat=()=>{setActiveProject(null);projRef.current=null;setMessages([]);setShowWelcome(true);setShowCodex(false);};
+  const sendMessage = async (text) => {
+    if (!text.trim() || loading) return;
 
-  const sendMessage=async text=>{
-    const txt=(text!==undefined?text:input).trim();
-    if((!txt&&!attachedImage)||loading)return;
-    setInput("");setShowWelcome(false);
-    const isVis=!!attachedImage;
-    const img=attachedImage;setAttachedImage(null);
+    // Create conversation if needed
+    let convId = activeId;
+    if (!convId) {
+      convId = mkId();
+      const newConv = { id:convId, title:mkTitle(text), messages:[], model, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+      setConvs(prev => { const updated=[newConv,...prev]; saveConvs(updated); return updated; });
+      setActiveId(convId);
+    }
 
-    const userMsg={role:"user",content:txt,imagePreview:img&&img.preview?img.preview:null,_imgBase64:img&&img.base64?img.base64:null,_imgMediaType:img&&img.mediaType?img.mediaType:null,createdAt:new Date().toISOString()};
-    const hist=[...messages,userMsg];
-    setMessages(hist);setLoading(true);
+    // Add user message
+    const userMsg = { role:"user", content:text, id:mkId() };
+    updateConv(convId, c=>({...c, messages:[...c.messages,userMsg], updatedAt:new Date().toISOString(), title:c.messages.length===0?mkTitle(text):c.title }));
+    setLoading(true);
 
-    const ERR={net:"⚠️ Sin conexión. Verificá tu red e intentá nuevamente.",time:"⚠️ NEURA tardó demasiado. Reintentá.",lim:"⚠️ Capacidad temporal agotada. Esperá unos minutos.",auth:"⚠️ Error de autenticación. Recargá la app.",gen:"⚠️ NEURA no pudo completar la operación. Reintentá."};
-    const addReply=c=>setMessages(p=>[...p,{role:"assistant",content:c,createdAt:new Date().toISOString()}]);
+    // Build history for API
+    const hist = [...(convs.find(c=>c.id===convId)?.messages||[]), userMsg];
+    const apiMsgs = hist.map(m=>({role:m.role,content:m.content})).slice(-20);
 
-    let done=false;
-    const safety=setTimeout(()=>{if(!done){setLoading(false);setActiveAgents([]);addReply(ERR.time);}},25000);
+    // Streaming placeholder
+    const aId = mkId();
+    updateConv(convId, c=>({...c, messages:[...c.messages,{role:"assistant",content:"",id:aId,provider:""}] }));
 
-    try{
-      let proj=projRef.current;
-      try{
-        if(!proj&&txt)proj=await createProject(txt);
-        if(proj)await store.saveMessages(proj.id,hist);
-        if(proj)await store.appendMsg(proj.id,{role:"user",content:txt});
-      }catch(e){console.warn("[N] storage:",e&&e.message);}
+    try {
+      const res = await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:apiMsgs,model,stream:true})});
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      const det=detectAgents(txt+(isVis?" visual design":""));
-      setActiveAgents(det);
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "", reply = "", detectedProvider = "";
+      const providerHeader = res.headers.get("X-Provider");
+      if (providerHeader) detectedProvider = providerHeader;
 
-      const raw=hist.filter(m=>m.type!=="routes"&&(m.role==="user"||m.role==="assistant"));
-      const alt=[];
-      for(const m of raw){const prev=alt[alt.length-1];if(prev&&prev.role===m.role)alt[alt.length-1]=m;else alt.push(m);}
-      const api=alt.slice(-8).map(m=>{
-        if(m._imgBase64)return{role:"user",content:[{type:"image",source:{type:"base64",media_type:m._imgMediaType,data:m._imgBase64}},{type:"text",text:m.content||"Analiza."}]};
-        return{role:m.role,content:m.content||"..."};
-      });
-      if(!api.length){addReply(ERR.gen);return;}
-
-      const modePrompt=MODES[selectedMode]&&MODES[selectedMode].prompt?MODES[selectedMode].prompt:"";
-      const sys=modePrompt?NEURA_SYSTEM+"\n\n"+modePrompt:NEURA_SYSTEM;
-
-      let res,data;
-      try{
-        res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system:sys,messages:api,max_tokens:1000})});
-        data=await res.json().catch(()=>null);
-      }catch(netErr){console.error("[N] net:",netErr&&netErr.message);addReply(ERR.net);return;}
-
-      if(!res.ok||!data){
-        const t=data&&(data.type||data.error&&data.error.type)||"";const s=res.status;
-        if(s===401||t.includes("auth")){addReply(ERR.auth);return;}
-        if(s===429||t.includes("limit")||t.includes("exceeded")){addReply(ERR.lim);return;}
-        addReply(ERR.gen);return;
-      }
-
-      const raw2=data&&data.reply?data.reply:"";
-      if(!raw2){addReply(ERR.gen);return;}
-
-      let aMsg={role:"assistant",content:raw2,createdAt:new Date().toISOString()};
-      if(raw2.trimStart().startsWith("{")&&raw2.includes("__neura_routes")){
-        try{
-          const parsed=JSON.parse(raw2.trim());
-          if(parsed.__neura_routes===true&&Array.isArray(parsed.routes)&&parsed.routes.length)
-            aMsg={role:"assistant",type:"routes",intent:parsed.intent||"",routes:parsed.routes,resolved:false,createdAt:new Date().toISOString()};
-        }catch(je){console.warn("[N] json:",je&&je.message);}
-      }
-
-      const final=[...hist,aMsg];
-      setMessages(final);
-      const all=[...new Set([...det,...detectAgents(raw2)])];setActiveAgents(all);
-
-      try{
-        if(proj){
-          await store.saveMessages(proj.id,final);
-          if(!aMsg.type)await store.appendMsg(proj.id,{role:"assistant",content:raw2});
-          await store.updateProject(proj.id,{status:"LIVE",lastSummary:raw2.replace(/[#*●→↓━]/g,"").trim().slice(0,80),activeAgents:all});
+      while (true) {
+        const {done,value} = await reader.read();
+        if (done) break;
+        buf += dec.decode(value,{stream:true});
+        const lines = buf.split("\n");
+        buf = lines.pop()||"";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data==="[DONE]") break;
+          try {
+            const evt = JSON.parse(data);
+            // Anthropic format
+            if (evt.type==="content_block_delta"&&evt.delta?.type==="text_delta") {
+              reply += evt.delta.text;
+              updateConv(convId,c=>({...c,messages:c.messages.map(m=>m.id===aId?{...m,content:reply,provider:detectedProvider}:m)}));
+            }
+            // OpenAI format
+            if (evt.choices?.[0]?.delta?.content) {
+              reply += evt.choices[0].delta.content;
+              updateConv(convId,c=>({...c,messages:c.messages.map(m=>m.id===aId?{...m,content:reply,provider:detectedProvider}:m)}));
+            }
+            // Provider info
+            if (evt.x_provider) detectedProvider = evt.x_provider;
+          } catch {}
         }
-      }catch(e){console.warn("[N] save:",e&&e.message);}
-
-    }catch(e){console.error("[N]:",e&&e.message);addReply(ERR.gen);}
-    finally{done=true;clearTimeout(safety);setLoading(false);setTimeout(()=>setActiveAgents([]),5000);}
+      }
+      if (!reply) throw new Error("Respuesta vacía");
+    } catch (err) {
+      updateConv(convId, c=>({...c,messages:c.messages.map(m=>m.id===aId?{...m,content:`Lo siento, hubo un problema: ${err.message}. Reintentá.`}:m)}));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const selectRoute=(routeMsg,route)=>{
-    setMessages(p=>p.map(m=>m===routeMsg?{...m,resolved:true,resolvedLabel:route.label}:m));
-    sendMessage("Enfoque: "+route.label+" — "+route.description+". Procedé.");
-  };
+  return (
+    <>
+      <style>{CSS}</style>
+      <div style={{display:"flex",height:"100%",height:"-webkit-fill-available",background:T.bg}}>
 
-  if(!authReady)return(
-    <><style>{CSS}</style>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#050713"}}>
-      <div style={{fontFamily:"'Orbitron',monospace",fontSize:24,fontWeight:700,color:"#00E5FF",letterSpacing:".15em",animation:"blink 1.5s ease-in-out infinite"}}>NEURA</div>
-    </div></>
-  );
-
-  if(USE_SUPABASE&&!session)return(
-    <><style>{CSS}</style>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#050713"}}>
-      <div style={{width:"100%",maxWidth:380,padding:32,borderRadius:20,background:"rgba(255,255,255,.04)",border:"1px solid rgba(0,229,255,.1)",backdropFilter:"blur(20px)"}}>
-        <div style={{textAlign:"center",marginBottom:24}}>
-          <Logo size={36}/><br/>
-          <div style={{fontFamily:"'Orbitron',monospace",fontWeight:700,fontSize:15,letterSpacing:".25em",color:"#F4F7FF",marginTop:10}}>NEURA</div>
-          <div style={{fontSize:11,color:"#606880",fontFamily:"'DM Sans',sans-serif",marginTop:4}}>{authMode==="login"?"INICIAR SESIÓN":"CREAR CUENTA"}</div>
+        {/* ── DESKTOP SIDEBAR ── */}
+        <div style={{width:260,flexShrink:0,display:"none",height:"100%"}} className="desktop-sidebar">
+          <Sidebar convs={convs} activeId={activeId} onNew={newChat} onSelect={id=>{setActiveId(id);}} onDelete={deleteConv} isMobile={false}/>
         </div>
-        <input type="email" placeholder="Email" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")(authMode==="login"?signIn:signUp)();}} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",marginBottom:10,display:"block"}}/>
-        <input type="password" placeholder="Contraseña" value={authPass} onChange={e=>setAuthPass(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")(authMode==="login"?signIn:signUp)();}} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(0,229,255,.15)",borderRadius:10,padding:"12px 14px",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",marginBottom:10,display:"block"}}/>
-        {authErr&&<div style={{fontSize:12,color:authErr.startsWith("✓")?"#00E5FF":"#ff6b6b",fontFamily:"'DM Sans',sans-serif",marginBottom:10,textAlign:"center"}}>{authErr}</div>}
-        <button onClick={authMode==="login"?signIn:signUp} disabled={authLoad} style={{width:"100%",padding:13,borderRadius:10,background:"linear-gradient(135deg,#35D8FF,#7B4DFF)",color:"#fff",fontSize:14,fontFamily:"'Syne',sans-serif",fontWeight:700,letterSpacing:".08em",opacity:authLoad?.5:1,marginBottom:10,cursor:"pointer"}}>{authLoad?"...":(authMode==="login"?"INGRESAR":"CREAR CUENTA")}</button>
-        <button onClick={()=>{setAuthMode(m=>m==="login"?"register":"login");setAuthErr("");}} style={{width:"100%",fontSize:12,color:"#606880",fontFamily:"'DM Sans',sans-serif",textAlign:"center",padding:6,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#00E5FF"} onMouseLeave={e=>e.currentTarget.style.color="#606880"}>{authMode==="login"?"¿No tenés cuenta? Registrate":"¿Ya tenés cuenta? Ingresá"}</button>
-      </div>
-    </div></>
-  );
 
-  const mode=MODES[selectedMode];
+        {/* ── MOBILE SIDEBAR OVERLAY ── */}
+        {sidebarOpen&&<>
+          <div onClick={()=>setSidebarOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",zIndex:300}} className="mobile-only"/>
+          <div style={{position:"fixed",left:0,top:0,bottom:0,width:280,zIndex:301}} className="mobile-only">
+            <Sidebar convs={convs} activeId={activeId} onNew={newChat} onSelect={id=>{setActiveId(id);setSidebarOpen(false);}} onDelete={deleteConv} onClose={()=>setSidebarOpen(false)} isMobile={true}/>
+          </div>
+        </>}
 
-  return(
-    <><style>{CSS}</style>
-    <div style={{display:"flex",height:"100vh",overflow:"hidden",background:"#050713",color:"#E8EEF8"}}>
-      <Sidebar onNew={newChat} projects={projects} tasks={tasks} onOpen={openProject} onSignOut={USE_SUPABASE?signOut:null} session={session} onOpenCodex={()=>{setShowCodex(true);setShowWelcome(false);}}/>
-      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,position:"relative"}}>
-        {showWelcome?(
-          <Home onSend={(t,img)=>{if(img){setAttachedImage(img);setTimeout(()=>sendMessage(t||""),50);}else sendMessage(t);}} selectedMode={selectedMode} onMode={setSelectedMode} isThinking={loading}/>
-        ):(
-          <>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",height:50,background:"rgba(5,7,19,.95)",backdropFilter:"blur(20px)",borderBottom:"1px solid rgba(0,229,255,.07)",flexShrink:0}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <button onClick={newChat} style={{display:"flex",alignItems:"center",gap:6,color:"#4050a0",fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:"all .2s ease",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.color="#8090d0"} onMouseLeave={e=>e.currentTarget.style.color="#4050a0"}><I.Back/>Inicio</button>
-                {activeProject&&<><div style={{width:1,height:14,background:"rgba(255,255,255,.06)"}}/><span style={{fontSize:11,fontFamily:"'Syne',sans-serif",letterSpacing:".07em",color:"#00E5FF",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProject.title}</span></>}
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                {activeAgents.slice(0,3).map(a=><div key={a} style={{fontSize:9,fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#00E5FF",letterSpacing:".06em",padding:"2px 7px",borderRadius:4,background:"rgba(0,229,255,.08)",border:"1px solid rgba(0,229,255,.2)"}}>{a.toUpperCase()}</div>)}
-                <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 9px",borderRadius:5,background:"rgba(0,229,255,.06)",border:"1px solid rgba(0,229,255,.12)"}}>
-                  <div style={{width:4,height:4,borderRadius:"50%",background:"#00E5FF",opacity:.7}}/>
-                  <span style={{fontSize:9,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:"#00E5FF",opacity:.8}}>{mode.label.toUpperCase()}</span>
+        {/* ── MAIN ── */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,height:"100%",overflow:"hidden"}}>
+          {/* Mobile header */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:`1px solid ${T.border}`,flexShrink:0}} className="mobile-header">
+            <button onClick={()=>setSidebarOpen(true)} style={{color:T.textSec,display:"flex",cursor:"pointer",padding:4,borderRadius:7,background:"transparent",border:"none"}} onMouseEnter={e=>e.currentTarget.style.background=T.bgSubtle} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <Icon.Menu/>
+            </button>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <NeuraLogo size={22}/>
+              <span style={{fontWeight:700,fontSize:14,letterSpacing:".1em",color:T.textPrimary}}>{activeConv?.title||"NEURA"}</span>
+            </div>
+            <button onClick={newChat} style={{color:T.accent,display:"flex",cursor:"pointer",padding:4,borderRadius:7,background:"transparent",border:"none"}}>
+              <Icon.Plus/>
+            </button>
+          </div>
+
+          {/* Desktop header */}
+          <div style={{display:"none",alignItems:"center",padding:"12px 20px",borderBottom:`1px solid ${T.border}`,flexShrink:0,gap:12}} className="desktop-header">
+            <span style={{flex:1,fontSize:14,color:T.textSec,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeConv?.title||""}</span>
+            {activeId&&<button onClick={newChat} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:T.bgSubtle,border:`1px solid ${T.border}`,color:T.textSec,fontSize:12,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=T.borderFocus} onMouseLeave={e=>e.currentTarget.style.borderColor=T.border}>
+              <Icon.Plus/> Nuevo
+            </button>}
+          </div>
+
+          {/* Messages / Home */}
+          {!activeId
+            ? <HomeEmpty onSend={sendMessage} model={model} onModelChange={setModel}/>
+            : <div style={{flex:1,overflowY:"auto",padding:"20px 16px",WebkitOverflowScrolling:"touch"}}>
+                <div style={{maxWidth:720,margin:"0 auto"}}>
+                  {messages.map(m=><div key={m.id} className="msg-in"><Message msg={m}/></div>)}
+                  {loading&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+                    <NeuraLogo size={28}/>
+                    <div style={{display:"flex",gap:4}}>
+                      {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:T.accent,animation:`voicePulse .8s ${i*.15}s ease-in-out infinite`,opacity:.6}}/>)}
+                    </div>
+                  </div>}
+                  <div ref={bottomRef}/>
                 </div>
               </div>
-            </div>
-            <div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"24px 20px",scrollbarWidth:"none",background:"#050713"}}>
-              <div style={{maxWidth:760,margin:"0 auto"}}>
-                {messages.map((m,i)=>m.type==="routes"?<Routes key={i} msg={m} onSelect={r=>selectRoute(m,r)}/>:<Bubble key={i} msg={m}/>)}
-                {loading&&<ThinkingState/>}
-              </div>
-            </div>
-            <div style={{padding:"12px 20px 16px",background:"rgba(5,7,19,.96)",backdropFilter:"blur(20px)",borderTop:"1px solid rgba(0,229,255,.07)",flexShrink:0}}>
-              <div style={{maxWidth:760,margin:"0 auto"}}>
-                {attachedImage&&(
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"7px 12px",borderRadius:9,background:"rgba(255,107,107,.05)",border:"1px solid rgba(255,107,107,.14)"}}>
-                    <img src={attachedImage.preview} alt="" style={{width:26,height:26,objectFit:"cover",borderRadius:5}}/>
-                    <span style={{flex:1,fontSize:10,fontFamily:"'Syne',sans-serif",letterSpacing:".1em",color:"#ff6b6b"}}>ASSET EN COLA</span>
-                    <button onClick={()=>setAttachedImage(null)} style={{color:"#ff6b6b",display:"flex",cursor:"pointer"}}><I.Close/></button>
-                  </div>
-                )}
-                <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:14,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.07)"}}>
-                  <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}} placeholder="Decime qué querés lograr..." rows={1} disabled={loading} style={{flex:1,background:"transparent",border:"none",color:"#E8EEF8",fontSize:14,fontFamily:"'DM Sans',sans-serif",resize:"none",lineHeight:1.6,maxHeight:120,overflow:"auto",opacity:loading?.5:1,cursor:"text"}} onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}/>
-                  <button onClick={()=>sendMessage()} disabled={(!input.trim()&&!attachedImage)||loading} style={{width:34,height:34,borderRadius:9,background:(!input.trim()&&!attachedImage)||loading?"rgba(255,255,255,.05)":"linear-gradient(135deg,#35D8FF,#7B4DFF)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .2s ease",opacity:(!input.trim()&&!attachedImage)||loading?.2:1,color:"#fff",boxShadow:input.trim()?"0 0 16px rgba(0,229,255,.3)":"none",cursor:"pointer"}}><I.Send/></button>
-                </div>
-                <div style={{textAlign:"center",marginTop:6,fontSize:9,color:"#141620",fontFamily:"'Syne',sans-serif",letterSpacing:".12em"}}>NEURA · SISTEMA OPERATIVO COGNITIVO</div>
-              </div>
-            </div>
-          </>
-        )}
+          }
+
+          {/* Composer */}
+          {activeId&&<Composer onSend={sendMessage} isLoading={loading} model={model} onModelChange={setModel}/>}
+        </div>
       </div>
-    </div></>
+
+      {/* PWA install banner */}
+      {showInstall&&<InstallBanner onDismiss={()=>{setShowInstall(false);localStorage.setItem("neura-install-dismissed","1");}}/>}
+
+      {/* Responsive CSS */}
+      <style>{`
+        .desktop-sidebar{display:flex!important;}
+        .mobile-header{display:none!important;}
+        .desktop-header{display:flex!important;}
+        .mobile-only{display:block!important;}
+        @media(max-width:768px){
+          .desktop-sidebar{display:none!important;}
+          .mobile-header{display:flex!important;}
+          .desktop-header{display:none!important;}
+        }
+      `}</style>
+    </>
   );
 }
-
