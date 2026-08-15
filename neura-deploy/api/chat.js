@@ -11,7 +11,7 @@
   const pid=resolve(model);
   if(!pid) return res.status(503).json({error:'No AI provider configured'});
   const prov=P[pid];
-  const SYS=system||'Sos el motor de interpretacion de NEURA. Interpretas internamente la intencion y objetivo del usuario antes de responder. No muestras este proceso. Voseo. Directo. Sin relleno.';
+  const SYS=system||'Sos NEURA. Prompt Master invisible. Interpreta la intencion del usuario y responde directamente con criterio experto. Nunca cuestionarios. Nunca preguntas antes de responder. Voseo argentino.';
   const msgs=messages.map(m=>({role:m.role==='assistant'?'assistant':'user',content:String(m.content||'').slice(0,8000)})).filter(m=>m.content);
   try{
     if(pid==='claude'){
