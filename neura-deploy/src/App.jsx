@@ -5,29 +5,15 @@ const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
 const USE_SUPABASE      = !SUPABASE_ANON_KEY.startsWith("YOUR_");
 const SIDEBAR_W         = 232;
 
-const NEURA_SYSTEM = `SOS NEURA ARCHITECT. Tu funcion es CONSTRUIR infraestructura operativa autonoma.
-
-DETECTAS: cuellos operativos | loops manuales | perdidas de tiempo | friccion humana | puntos de fuga de dinero.
-CONSTRUIS: agentes autonomos | arquitectura ejecutable | flujos | centros de operaciones.
-
-REGLA CENTRAL: Cuando el usuario describe un negocio o problema, DEBES:
-1. Detectar cuello critico
-2. Medir perdida operativa
-3. Disenar agentes autonomos
-4. Construir arquitectura ejecutable
-5. Generar sistema operativo completo
-
-OUTPUT: DIAGNOSTICO | CUELLO | AGENTES | FLUJO | STACK | INFRAESTRUCTURA | METRICAS | DEPLOY
-
-FORMATO:
-ALERTA OPERATIVA
-PIPELINE: TRAFICO->CAPTURA->RESPUESTA(CUELLO)
-PERDIDA: -$X/min | RIESGO: ALTO
-
-AGENTES: Lead Responders | Closers | SDRs | Support | CRM Intelligence | Follow-up | Recovery | Dashboards
-
-MENTALIDAD: Palantir | Tesla Ops | Linear | sistemas militares. NO conversas. DIAGNOSTICAS y CONSTRUIS.
-Espanol argentino (voseo). Sin relleno.`;
+const NEURA_SYSTEM = `You are NEURA — a Cognitive Operating System, not a chatbot.
+Transform goals into executable systems. Diagnose operational problems, build acquisition pipelines, orchestrate agents, optimize workflows.
+SYSTEM IDENTITY: operational, alive, dynamic. Use: SISTEMA ACTIVO / PIPELINE GENERADO / MODO EJECUCIÓN / AGENTES ACTIVOS.
+Avoid: assistant tone, motivational clichés, "I can help", "Here are ideas".
+PIPELINE THINKING: Tráfico → Atención → Captura → Calificación → Conversión → Retención → Expansión.
+Every interaction produces at least ONE executable output. AUTO-BUILD without unnecessary permission.
+FORMAT: OBJETIVO → DIAGNÓSTICO → SISTEMA GENERADO → OUTPUTS → PRÓXIMA FASE
+LANGUAGE: Auto-detect. Respond in same language. Spanish LATAM / Argentine voseo when appropriate.
+RULE: NEURA builds, orchestrates and optimizes operational execution systems.`;
 
 const MODES = {
   contextual:{label:"Contextual",sub:"Memoria activa",color:"#00E5FF",prompt:"MODO CONTEXTUAL: Priorizá memoria y continuidad entre operaciones."},
@@ -203,99 +189,7 @@ function Routes({msg,onSelect}) {
   );
 }
 
-﻿function AgentCenter({onBack}){
-  const[tab,setTab]=useState("agents");
-  const[agents,setAgents]=useState(()=>{try{return JSON.parse(localStorage.getItem("neura-agents-v1")||"[]");}catch{return[];}});
-  const[creating,setCreating]=useState(false);
-  const[form,setForm]=useState({name:"",role:"vendedor",model:"claude",instr:"",offer:""});
-  const[conns,setConns]=useState([{id:"gmail",icon:"📧",n:"Gmail",st:0},{id:"gdrive",icon:"📁",n:"Drive",st:0},{id:"slack",icon:"💬",n:"Slack",st:0},{id:"notion",icon:"📓",n:"Notion",st:0},{id:"whatsapp",icon:"💚",n:"WhatsApp",st:0},{id:"instagram",icon:"📸",n:"Instagram",st:0}]);
-  const ROLES=[{id:"vendedor",icon:"💬",n:"Vendedor"},{id:"soporte",icon:"🎧",n:"Soporte"},{id:"research",icon:"🔍",n:"Investigador"},{id:"redactor",icon:"✍",n:"Redactor"},{id:"operador",icon:"⚙",n:"Operador"},{id:"closer",icon:"🎯",n:"Closer"},{id:"sdr",icon:"📞",n:"SDR"},{id:"recovery",icon:"🔄",n:"Recovery"}];
-  const MODELS=[{id:"claude",l:"Claude",ok:true},{id:"gpt4o",l:"GPT-4o",ok:false},{id:"gemini",l:"Gemini",ok:false},{id:"qwen",l:"Qwen",ok:false}];
-  const CHANS=[{id:"web",icon:"🌐",n:"Web Chat",ok:true},{id:"telegram",icon:"✈",n:"Telegram",ok:false},{id:"discord",icon:"🎮",n:"Discord",ok:false},{id:"whatsapp",icon:"💚",n:"WhatsApp",ok:false},{id:"instagram",icon:"📸",n:"Instagram",ok:false}];
-  const card={background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:10,padding:"14px 16px",marginBottom:10};
-  const inp={width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.09)",borderRadius:8,padding:"10px 12px",color:"#E8EEF8",fontSize:13,outline:"none",fontFamily:"'DM Sans',sans-serif"};
-  const save=()=>{const ag={id:Math.random().toString(36).slice(2),name:form.name,role:form.role,model:form.model,instructions:form.instr,config:{businessName:form.name,offer:form.offer},connectors:{},status:"draft",created_at:new Date().toISOString()};const upd=[ag,...agents];setAgents(upd);try{localStorage.setItem("neura-agents-v1",JSON.stringify(upd));}catch{};setCreating(false);};
-  return(
-    <div style={{flex:1,display:"flex",flexDirection:"column",background:"#050713",overflow:"hidden",minWidth:0}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",height:48,background:"rgba(5,7,19,.97)",borderBottom:"1px solid rgba(0,229,255,.08)",flexShrink:0}}>
-        <div style={{display:"flex",alignItems:"center",gap:14}}>
-          <button onClick={onBack} style={{color:"#505870",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",gap:6}} onMouseEnter={e=>e.currentTarget.style.color="#A8B4D8"} onMouseLeave={e=>e.currentTarget.style.color="#505870"}><I.Back/> Neura Core</button>
-          <span style={{color:"#1e2040"}}>|</span>
-          <span style={{fontSize:10,fontFamily:"'Syne',sans-serif",letterSpacing:".12em",color:"#00E5FF"}}>CENTRO DE AGENTES</span>
-        </div>
-        {tab==="agents"&&!creating&&<button onClick={()=>setCreating(true)} style={{padding:"6px 14px",borderRadius:7,background:"rgba(180,92,255,.1)",border:"1px solid rgba(180,92,255,.3)",color:"#B45CFF",fontSize:12,cursor:"pointer"}}>+ Nuevo agente</button>}
-      </div>
-      <div style={{display:"flex",gap:4,padding:"8px 20px",borderBottom:"1px solid rgba(255,255,255,.05)",flexShrink:0,overflowX:"auto",scrollbarWidth:"none"}}>
-        {["agents","connectors","channels"].map(t=><button key={t} onClick={()=>{setTab(t);setCreating(false);}} style={{padding:"6px 12px",borderRadius:6,fontSize:11,cursor:"pointer",background:tab===t?"rgba(0,229,255,.08)":"transparent",border:"1px solid "+(tab===t?"rgba(0,229,255,.25)":"transparent"),color:tab===t?"#00E5FF":"#505870",fontFamily:"'Syne',sans-serif",letterSpacing:".06em",whiteSpace:"nowrap"}}>{t==="agents"?"AGENTES":t==="connectors"?"CONECTORES":"CANALES"}</button>)}
-      </div>
-      <div style={{flex:1,overflowY:"auto",padding:20,scrollbarWidth:"none"}}>
-        <div style={{maxWidth:720,margin:"0 auto"}}>
-          {tab==="agents"&&!creating&&<>
-            {agents.length===0&&<div style={{...card,textAlign:"center",padding:"40px 20px"}}>
-              <div style={{fontSize:40,marginBottom:12}}>🤖</div>
-              <div style={{fontSize:14,color:"#E8EEF8",fontFamily:"'DM Sans',sans-serif",marginBottom:16,fontWeight:500}}>No hay agentes activos</div>
-              <button onClick={()=>setCreating(true)} style={{padding:"9px 20px",borderRadius:7,background:"rgba(180,92,255,.1)",border:"1px solid rgba(180,92,255,.3)",color:"#B45CFF",fontSize:12,cursor:"pointer"}}>+ Activar primer modulo</button>
-            </div>}
-            {agents.map(ag=>(
-              <div key={ag.id} style={{...card,display:"flex",alignItems:"center",gap:12}}>
-                <span style={{fontSize:24,flexShrink:0}}>{ROLES.find(r=>r.id===ag.role)?.icon||"🤖"}</span>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,color:"#E8EEF8",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>{ag.name}</div>
-                  <div style={{fontSize:10,color:"#505870",marginTop:2}}>{ROLES.find(r=>r.id===ag.role)?.n||ag.role} · {ag.model} · {new Date(ag.created_at).toLocaleDateString("es-AR")}</div>
-                </div>
-                <div style={{display:"flex",gap:5,alignItems:"center"}}>
-                  <span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:"rgba(255,165,0,.08)",border:"1px solid rgba(255,165,0,.2)",color:"#fbbf24",fontFamily:"'Syne',sans-serif"}}>DRAFT</span>
-                  <button onClick={()=>{const u=agents.filter(a=>a.id!==ag.id);setAgents(u);try{localStorage.setItem("neura-agents-v1",JSON.stringify(u));}catch{}}} style={{fontSize:10,padding:"2px 8px",borderRadius:5,background:"rgba(255,50,50,.05)",border:"1px solid rgba(255,50,50,.12)",color:"#805050",cursor:"pointer"}}>✕</button>
-                </div>
-              </div>
-            ))}
-          </>}
-          {tab==="agents"&&creating&&<>
-            <div style={card}>
-              <div style={{fontSize:9,color:"#505870",fontFamily:"'Syne',sans-serif",letterSpacing:".1em",marginBottom:8}}>NOMBRE DEL MODULO</div>
-              <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Ej: First Responder MiNegocio" style={{...inp,marginBottom:14}}/>
-              <div style={{fontSize:9,color:"#505870",fontFamily:"'Syne',sans-serif",letterSpacing:".1em",marginBottom:8}}>ROL OPERATIVO</div>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
-                {ROLES.map(r=><button key={r.id} onClick={()=>setForm(p=>({...p,role:r.id}))} style={{padding:"5px 10px",borderRadius:6,background:form.role===r.id?"rgba(0,229,255,.08)":"rgba(255,255,255,.03)",border:"1px solid "+(form.role===r.id?"rgba(0,229,255,.3)":"rgba(255,255,255,.07)"),color:form.role===r.id?"#00E5FF":"#606080",fontSize:11,cursor:"pointer"}}>{r.icon} {r.n}</button>)}
-              </div>
-              <div style={{fontSize:9,color:"#505870",fontFamily:"'Syne',sans-serif",letterSpacing:".1em",marginBottom:8}}>MODELO IA</div>
-              <div style={{display:"flex",gap:6,marginBottom:14}}>
-                {MODELS.map(m=><button key={m.id} onClick={()=>m.ok&&setForm(p=>({...p,model:m.id}))} style={{padding:"5px 10px",borderRadius:6,background:form.model===m.id?"rgba(180,92,255,.08)":"rgba(255,255,255,.03)",border:"1px solid "+(form.model===m.id?"rgba(180,92,255,.3)":"rgba(255,255,255,.07)"),color:form.model===m.id?"#B45CFF":"#606080",fontSize:11,cursor:m.ok?"pointer":"default",opacity:m.ok?1:.5}}>{m.l}{m.ok?"":" ↑"}</button>)}
-              </div>
-              <div style={{fontSize:9,color:"#505870",fontFamily:"'Syne',sans-serif",letterSpacing:".1em",marginBottom:8}}>INSTRUCCIONES OPERATIVAS</div>
-              <textarea value={form.instr} onChange={e=>setForm(p=>({...p,instr:e.target.value}))} placeholder="Diagnosticas cuellos operativos. Detectas perdidas. Respondes en menos de 2 minutos. Calificas automaticamente." rows={3} style={{...inp,resize:"none",marginBottom:14}}/>
-              <div style={{fontSize:9,color:"#505870",fontFamily:"'Syne',sans-serif",letterSpacing:".1em",marginBottom:8}}>CONTEXTO DEL NEGOCIO</div>
-              <textarea value={form.offer} onChange={e=>setForm(p=>({...p,offer:e.target.value}))} placeholder="Que opera, que vende, cuales son los cuellos actuales..." rows={2} style={{...inp,resize:"none"}}/>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
-              <button onClick={()=>setCreating(false)} style={{padding:"8px 16px",borderRadius:7,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.08)",color:"#A8B4D8",fontSize:12,cursor:"pointer"}}>Cancelar</button>
-              <button onClick={save} disabled={!form.name.trim()} style={{padding:"8px 16px",borderRadius:7,background:"rgba(180,92,255,.12)",border:"1px solid rgba(180,92,255,.4)",color:"#B45CFF",fontSize:12,cursor:"pointer",fontWeight:600,opacity:form.name.trim()?1:.4}}>Activar modulo 🚀</button>
-            </div>
-          </>}
-          {tab==="connectors"&&<div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
-            {conns.map(cn=>(
-              <div key={cn.id} style={{...card,display:"flex",alignItems:"center",gap:10,marginBottom:0}}>
-                <span style={{fontSize:20}}>{cn.icon}</span>
-                <span style={{flex:1,fontSize:12,color:"#E8EEF8",fontFamily:"'DM Sans',sans-serif"}}>{cn.n}</span>
-                <button onClick={()=>setConns(p=>p.map(c=>c.id===cn.id?{...c,st:c.st?0:1}:c))} style={{fontSize:10,padding:"4px 8px",borderRadius:5,background:cn.st?"rgba(52,211,153,.1)":"rgba(255,255,255,.04)",border:"1px solid "+(cn.st?"rgba(52,211,153,.3)":"rgba(255,255,255,.1)"),color:cn.st?"#34d399":"#505870",cursor:"pointer"}}>{cn.st?"● ON":"Conectar"}</button>
-              </div>
-            ))}
-          </div>}
-          {tab==="channels"&&CHANS.map(ch=>(
-            <div key={ch.id} style={{...card,display:"flex",alignItems:"center",gap:12}}>
-              <span style={{fontSize:22}}>{ch.icon}</span>
-              <div style={{flex:1}}><div style={{fontSize:12,color:"#E8EEF8",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>{ch.n}</div><div style={{fontSize:10,color:"#505870",marginTop:2}}>{ch.ok?"Disponible ahora":"Proximamente"}</div></div>
-              <span style={{fontSize:9,padding:"2px 8px",borderRadius:10,background:ch.ok?"rgba(52,211,153,.08)":"rgba(255,255,255,.03)",border:"1px solid "+(ch.ok?"rgba(52,211,153,.25)":"rgba(255,255,255,.07)"),color:ch.ok?"#34d399":"#404060",fontFamily:"'Syne',sans-serif"}}>{ch.ok?"● LISTO":"PRONTO"}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-function Sidebar({onNew,projects=[],tasks=[],onOpen,onSignOut,session,onOpenCodex,onCreateAgent,agentCount=0}) {
+function Sidebar({onNew,projects=[],tasks=[],onOpen,onSignOut,session,onOpenCodex}) {
   const [view,setView]=useState(null);
   const [q,setQ]=useState("");
   const user=session?.user?.email?.split("@")[0]||"Usuario";
@@ -618,8 +512,6 @@ export default function NEURA() {
   const [activeProject,setActiveProject]=useState(null);
   const [showWelcome,setShowWelcome]=useState(true);
   const [showCodex,setShowCodex]=useState(false);
-  const [showAgentBuilder,setShowAgentBuilder]=useState(false);
-  const [myAgents,setMyAgents]=useState(()=>{try{return JSON.parse(localStorage.getItem("neura-agents-v1")||"[]");}catch{return [];}});
   const [selectedMode,setSelectedMode]=useState("contextual");
   const [attachedImage,setAttachedImage]=useState(null);
   const [activeAgents,setActiveAgents]=useState([]);
@@ -798,9 +690,9 @@ export default function NEURA() {
   return(
     <><style>{CSS}</style>
     <div style={{display:"flex",height:"100vh",overflow:"hidden",background:"#050713",color:"#E8EEF8"}}>
-      <Sidebar onNew={newChat} projects={projects} tasks={tasks} onOpen={openProject} onSignOut={USE_SUPABASE?signOut:null} session={session} onOpenCodex={()=>{setShowCodex(true);setShowWelcome(false);}} onCreateAgent={()=>{setShowAgentBuilder(true);setShowWelcome(false);}} agentCount={myAgents.length}/>
+      <Sidebar onNew={newChat} projects={projects} tasks={tasks} onOpen={openProject} onSignOut={USE_SUPABASE?signOut:null} session={session} onOpenCodex={()=>{setShowCodex(true);setShowWelcome(false);}}/>
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,position:"relative"}}>
-        { showAgentBuilder?(<AgentCenter onBack={()=>{setShowAgentBuilder(false);setShowWelcome(true);}}/>):showWelcome?(
+        {showWelcome?(
           <Home onSend={(t,img)=>{if(img){setAttachedImage(img);setTimeout(()=>sendMessage(t||""),50);}else sendMessage(t);}} selectedMode={selectedMode} onMode={setSelectedMode} isThinking={loading}/>
         ):(
           <>
