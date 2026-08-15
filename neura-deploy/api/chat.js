@@ -1,4 +1,4 @@
-// api/chat.js — NEURA AI Gateway v3 with refined output validator
+// api/chat.js â€” NEURA AI Gateway v3 with refined output validator
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -32,89 +32,270 @@ module.exports = async function handler(req, res) {
   if (!pid) return res.status(503).json({ error: 'No AI provider configured', code: 'no_provider' });
   const prov = P[pid];
 
-  // ── NEURA PROMPT MASTER ────────────────────────────────────────────────────
-  const NEURA_SYSTEM = `Sos NEURA. Un Prompt Master invisible.
+  // â”€â”€ NEURA PROMPT MASTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  
+const NEURA_SYSTEM = `
+Sos NEURA.
 
-El usuario escribe o habla de manera natural. Vos interpretás internamente su intención, inferís el experto adecuado y respondés directamente con criterio profesional. Nunca mostrás este proceso.
+NEURA es un Prompt Master invisible.
 
-REGLA ABSOLUTA: nunca pospongas la ayuda para recopilar información. Ante cualquier pedido, entregá primero una solución, recomendación, plan, idea o ejemplo concreto. Después, si aporta valor, podés hacer UNA pregunta para personalizar.
+El usuario puede hablar o escribir de manera normal, breve, incompleta, desordenada o poco tecnica.
 
-PROHIBIDO COMO PRIMERA RESPUESTA: abrir con "Necesito saber", "Antes de empezar", "Para poder ayudarte", "Decime primero" o cualquier variante que posponga la ayuda.
+Tu trabajo es entender lo que realmente quiere conseguir y responder como si hubiera formulado un excelente prompt.
 
-SUPUESTOS: cuando falten datos, usá supuestos razonables y continúa. Ejemplo: en vez de pedir el presupuesto, decí "Si el presupuesto es acotado, arrancá por..."
+No muestres este proceso.
 
-EXPERTO AUTOMÁTICO: inferí el rol profesional según el pedido. El usuario nunca necesita decirte "actuá como".
+REGLA PRINCIPAL:
 
-ESTILO: 1-3 párrafos naturales. Directo. Lenguaje conversacional. Listas solo cuando realmente mejoran la lectura.
+PRIMERO RESOLVE.
+DESPUES, SI HACE FALTA, PERSONALIZA.
 
-Tono: natural, seguro, cercano. Voseo argentino.`;
+Nunca conviertas la primera respuesta en un cuestionario.
 
-  const FINAL_SYS = system || NEURA_SYSTEM;
+No empieces con frases como:
 
-  // ── OUTPUT VALIDATOR ───────────────────────────────────────────────────────
-  // Detects if a response POSTPONES HELP to gather information.
-  // Does NOT penalize lists, bullets, or questions that appear after delivering value.
-  function postponesHelp(text) {
-    if (!text) return false;
-    const t = text.trim();
+"Necesito saber..."
+"Antes de ayudarte..."
+"Antes de empezar..."
+"Para poder ayudarte..."
+"Decime primero..."
+"Respondeme estas preguntas..."
 
-    // 1. Explicit postponement openers — these always fail
-    const POSTPONEMENT_OPENERS = [
-      /^necesito saber/i,
-      /^antes de (empezar|ayudarte|responder|continuar|darte)/i,
-      /^para (poder ayudarte|darte (una|el|la|opciones)|diseñar|crear|armar)/i,
-      /^decime (primero|antes|qué|cuándo|cuántos|cuánto|dónde)/i,
-      /^primero necesito/i,
-      /^(?:para eso )?necesito (que me|algunos|más)/i,
-      /^me (falta|faltan) (saber|datos|información)/i,
-      /^¿qué (tipo|clase|estilo|producto|servicio)/i,
-    ];
-    if (POSTPONEMENT_OPENERS.some(p => p.test(t))) return true;
+El usuario no tiene que aprender prompting.
+Ese trabajo lo hace NEURA.
 
-    // 2. First 250 chars: if ALL content is questions and no value statement exists
-    const first250 = t.slice(0, 250);
-    const questionMarks = (first250.match(/\?/g) || []).length;
-    // Count non-question sentences (length > 20, doesn't end in ?)
-    const statements = first250.split(/(?<=[.!])\s+/)
-      .filter(s => s.trim().length > 20 && !s.trim().endsWith('?'));
+Antes de responder, interpreta internamente:
 
-    if (questionMarks >= 2 && statements.length === 0) return true;
+1. Que quiere conseguir realmente.
+2. Que tipo de experto deberia responder.
+3. Que contexto razonable puede inferirse.
+4. Que recomendacion concreta puede dar.
+5. Que ejemplo ayudaria.
+6. Que acciones puede proponer.
+7. Cuanta profundidad necesita la consulta.
 
-    // 3. Opening bullet list of ONLY questions, no value before them
-    const lines = t.split('\n');
-    let consecutiveQuestionBullets = 0;
-    let foundValueBefore = false;
+Luego responde directamente.
 
-    for (const line of lines.slice(0, 8)) {
-      const l = line.trim();
-      if (!l) continue;
+No muestres:
+Prompt optimizado.
+Rol.
+Objetivo.
+Contexto.
+Actua como.
 
-      const isQuestionBullet = /^[-*•]\s*¿/.test(l) ||
-        (/^[-*•]\s/.test(l) && l.endsWith('?'));
-      const isValueLine = l.length > 25 && !l.endsWith('?') && !/^[-*•]\s*$/.test(l);
+RESPUESTA:
 
-      if (isValueLine && !isQuestionBullet) { foundValueBefore = true; break; }
-      if (isQuestionBullet) consecutiveQuestionBullets++;
-    }
+Responde como una IA avanzada.
 
-    if (consecutiveQuestionBullets >= 2 && !foundValueBefore) return true;
+Natural.
+Clara.
+Inteligente.
+Con criterio.
+Concreta.
+Accionable.
 
-    return false;
+La primera linea debe aportar valor.
+
+Para una consulta normal, prioriza una respuesta breve o media.
+
+Usa parrafos naturales.
+
+Usa listas, bullets, subtitulos o pasos solo cuando realmente mejoren la lectura.
+
+No conviertas automaticamente cada respuesta en:
+- un informe;
+- un cuestionario;
+- un ranking;
+- un catalogo;
+- una plantilla;
+- "3 ideas" por defecto.
+
+Prompt Master debe mejorar la calidad del pensamiento, no hacer artificial la respuesta.
+
+NEGOCIOS:
+
+Si el usuario dice:
+"Necesito una idea de negocio"
+
+No preguntes primero capital, gustos, experiencia ni tiempo disponible.
+
+Eleg? una recomendacion fuerte y desarrollala.
+
+Explica:
+que problema resuelve,
+como funcionaria,
+como podria ganar dinero,
+y como empezar.
+
+EVENTOS:
+
+Si dice:
+"Quiero organizar una despedida de soltero"
+o
+"Quiero organizar un cumplea?os"
+
+Empeza proponiendo una estructura o plan.
+
+No pidas primero fecha, presupuesto, invitados, ciudad y preferencias.
+
+MARKETING:
+
+Si dice:
+"Necesito gente para mi evento"
+
+Responde directamente como especialista en marketing:
+estrategia,
+mensaje,
+canales,
+urgencia,
+acciones.
+
+PUBLICIDAD:
+
+Si dice:
+"Quiero crear una publicidad"
+
+Da inmediatamente una direccion creativa, una estructura y un ejemplo.
+
+No pidas primero cinco datos.
+
+SUPUESTOS:
+
+Cuando falten detalles, usa supuestos generales y razonables sin inventar datos concretos sobre el usuario.
+
+La falta de informacion no debe detener una primera respuesta util.
+
+PREGUNTAS:
+
+Por defecto no hagas preguntas al principio.
+
+Si una informacion permitiria personalizar mucho mejor la solucion, podes ofrecer al final:
+
+"Si queres, decime X y te lo adapto."
+
+Pero la respuesta ya debe haber ayudado antes.
+
+REGLA FINAL:
+
+El usuario habla normal.
+NEURA entiende.
+NEURA piensa como experto.
+NEURA responde.
+
+Prompt Master es invisible.
+`;
+
+const FINAL_SYS = NEURA_SYSTEM;
+
+
+// OUTPUT VALIDATOR
+// Detecta solamente cuando la IA posterga la ayuda para pedir informacion.
+// NO penaliza listas o bullets utiles.
+
+function postponesHelp(text) {
+  if (!text) return false;
+
+  const t = String(text).trim();
+  const first = t.slice(0, 900).toLowerCase();
+
+  const badOpeners = [
+    "necesito saber",
+    "necesito algunos datos",
+    "necesito algunos detalles",
+    "antes de ayudarte",
+    "antes de empezar",
+    "para poder ayudarte",
+    "decime primero",
+    "dime primero",
+    "respondeme estas preguntas",
+    "primero necesito"
+  ];
+
+  if (badOpeners.some(x => first.startsWith(x) || first.includes(x))) {
+    return true;
   }
 
-  const cleanMessages = messages
-    .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 8000) }))
-    .filter(m => m.content);
+  // Varias preguntas al principio sin haber entregado valor.
+  const questionCount = (t.slice(0, 900).match(/\?/g) || []).length;
 
-  // ── REGENERATION SYSTEM PROMPT ─────────────────────────────────────────────
-  const REGEN_SYS = `${FINAL_SYS}
+  const valueSignals = [
+    "yo haria",
+    "te recomiendo",
+    "una buena idea",
+    "empezaria",
+    "arrancaria",
+    "podes",
+    "podrias",
+    "la mejor forma",
+    "una opcion",
+    "mi recomendacion",
+    "por ejemplo",
+    "funciona porque",
+    "la clave",
+    "te conviene"
+  ];
 
-CORRECCIÓN ACTIVA: tu respuesta anterior pospuso la ayuda para pedir información. Eso está prohibido.
-Esta vez comenzá INMEDIATAMENTE con una solución, plan, idea o recomendación concreta.
-Usá supuestos razonables para lo que no sabés. Podés hacer UNA pregunta al final si aporta valor.
-La primera línea debe ser valor, no una pregunta.`;
+  const deliveredValue = valueSignals.some(x =>
+    first.includes(x)
+  );
 
-  // ── API CALLS ──────────────────────────────────────────────────────────────
+  if (questionCount >= 3 && !deliveredValue) {
+    return true;
+  }
+
+  // Detecta recoleccion directa de requisitos antes de ayudar.
+  const dataRequests = [
+    "cual es tu presupuesto",
+    "cuanto capital",
+    "cuantas personas",
+    "cuando es",
+    "donde es",
+    "a quien apunta",
+    "que presupuesto",
+    "que experiencia tenes"
+  ];
+
+  const askingData = dataRequests.filter(x =>
+    first.includes(x)
+  ).length;
+
+  if (askingData >= 2 && !deliveredValue) {
+    return true;
+  }
+
+  return false;
+}
+
+
+const REGEN_SYS = FINAL_SYS + `
+
+CORRECCION DE RESPUESTA:
+
+Tu respuesta anterior postergo la ayuda para recopilar informacion.
+
+Reescribila completamente.
+
+No hagas un cuestionario.
+
+No pidas varios datos antes de empezar.
+
+Entrega inmediatamente una solucion, recomendacion, idea, plan o ejemplo concreto.
+
+Usa supuestos generales razonables cuando falten detalles.
+
+Responde como una IA avanzada:
+natural,
+clara,
+con criterio experto,
+con ejemplos y acciones utiles.
+
+Podes ofrecer personalizacion al final.
+
+La primera linea debe aportar valor, no ser una pregunta.
+`;
+
+
+  // â”€â”€ API CALLS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function callClaudeSync(sys, msgs) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -167,7 +348,7 @@ La primera línea debe ser valor, no una pregunta.`;
   const OA_URLS = { gpt:'https://api.openai.com/v1/chat/completions', deepseek:'https://api.deepseek.com/v1/chat/completions', grok:'https://api.x.ai/v1/chat/completions', kimi:'https://api.moonshot.cn/v1/chat/completions' };
 
   try {
-    // ── CLAUDE with validator + single regen ──────────────────────────────
+    // â”€â”€ CLAUDE with validator + single regen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (pid === 'claude') {
 
       if (doStream) {
@@ -175,16 +356,16 @@ La primera línea debe ser valor, no una pregunta.`;
         const first = await callClaudeSync(FINAL_SYS, cleanMessages);
 
         if (!postponesHelp(first)) {
-          // Good response — stream it
+          // Good response â€” stream it
           return streamText(first);
         }
 
-        // Postponement detected — one regen attempt
+        // Postponement detected â€” one regen attempt
         console.log('[NEURA validator] Postponement detected. Regenerating (1/1).');
         const regen = await callClaudeSync(REGEN_SYS, cleanMessages);
 
         if (postponesHelp(regen)) {
-          // Regen also failed — log and return best available (regen is usually better)
+          // Regen also failed â€” log and return best available (regen is usually better)
           console.log('[NEURA validator] Regen also postponed. Returning best available. Case logged.');
         }
 
@@ -208,7 +389,7 @@ La primera línea debe ser valor, no una pregunta.`;
       return res.json({ reply: regen, provider: prov.name, regenerated: true });
     }
 
-    // ── OPENAI-compatible providers ──────────────────────────────────────
+    // â”€â”€ OPENAI-compatible providers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (OA_URLS[pid]) {
       const r = await fetch(OA_URLS[pid], {
         method: 'POST',
@@ -221,7 +402,7 @@ La primera línea debe ser valor, no una pregunta.`;
       return res.json({ reply: d.choices?.[0]?.message?.content || '', provider: prov.name });
     }
 
-    // ── GEMINI ──────────────────────────────────────────────────────────
+    // â”€â”€ GEMINI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (pid === 'gemini') {
       const contents = cleanMessages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${prov.model}:generateContent?key=${prov.key}`,
