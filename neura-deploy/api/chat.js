@@ -327,7 +327,7 @@ La primera linea debe aportar valor, no ser una pregunta.
   }
 
   async function pipeStream(r, providerName, format = 'anthropic') {
-    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('X-Provider', providerName);
     if (format === 'openai') res.write(`data: {"x_provider":"${providerName}"}\n\n`);
@@ -360,9 +360,20 @@ La primera linea debe aportar valor, no ser una pregunta.
     // Ã¢â€â‚¬Ã¢â€â‚¬ CLAUDE with validator + single regen Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     if (pid === 'claude') {
 
+      // Historial exclusivo para Claude.
+      // Vive dentro del mismo scope donde Claude lo utiliza.
+      const claudeMessages = (Array.isArray(messages) ? messages : [])
+        .map(m => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: String(m.content || "").slice(0, 8000)
+        }))
+        .filter(m => m.content.trim())
+        .slice(-20);
+
+
       if (doStream) {
         // Validate first (sync), then stream the result
-        const first = await callClaudeSync(FINAL_SYS, cleanMessages);
+        const first = await callClaudeSync(FINAL_SYS, claudeMessages);
 
         if (!postponesHelp(first)) {
           // Good response Ã¢â‚¬â€ stream it
@@ -371,7 +382,7 @@ La primera linea debe aportar valor, no ser una pregunta.
 
         // Postponement detected Ã¢â‚¬â€ one regen attempt
         console.log('[NEURA validator] Postponement detected. Regenerating (1/1).');
-        const regen = await callClaudeSync(REGEN_SYS, cleanMessages);
+        const regen = await callClaudeSync(REGEN_SYS, claudeMessages);
 
         if (postponesHelp(regen)) {
           // Regen also failed Ã¢â‚¬â€ log and return best available (regen is usually better)
@@ -382,14 +393,14 @@ La primera linea debe aportar valor, no ser una pregunta.
       }
 
       // Non-streaming path
-      const first = await callClaudeSync(FINAL_SYS, cleanMessages);
+      const first = await callClaudeSync(FINAL_SYS, claudeMessages);
 
       if (!postponesHelp(first)) {
         return res.json({ reply: first, provider: prov.name });
       }
 
       console.log('[NEURA validator] Postponement detected. Regenerating (1/1).');
-      const regen = await callClaudeSync(REGEN_SYS, cleanMessages);
+      const regen = await callClaudeSync(REGEN_SYS, claudeMessages);
 
       if (postponesHelp(regen)) {
         console.log('[NEURA validator] Regen also postponed. Returning best available. Case logged.');
