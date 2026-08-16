@@ -401,7 +401,7 @@ function InstallBanner({ onDismiss }) {
               <span style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>Instalá NEURA</span>
               <button onClick={onDismiss} style={{color:T.textTert,cursor:"pointer",display:"flex"}}><Icon.X/></button>
             </div>
-            {["1. Tocá el botón Compartir (cuadrado con flecha)","2. Elegí ┬½Añadir a pantalla de inicio┬╗","3. Tocá Agregar"].map((s,i)=>(
+            {["1. Tocá el botón Compartir (cuadrado con flecha)","2. Elegí «Añadir a pantalla de inicio»","3. Tocá Agregar"].map((s,i)=>(
               <div key={i} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
                 <div style={{width:22,height:22,borderRadius:"50%",background:T.accentSoft,color:T.accent,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
                 <span style={{fontSize:12,color:T.textSec,lineHeight:1.5}}>{s.slice(3)}</span>
@@ -554,7 +554,7 @@ export default function App() {
       }
       if (!reply) throw new Error("Respuesta vacía");
     } catch (err) {
-      updateConv(convId, c=>({...c,messages:c.messages.map(m=>m.id===aId?{...m,content:`Lo siento, hubo un problema: ${err.message}. Reintent├í.`}:m)}));
+      updateConv(convId, c=>({...c,messages:c.messages.map(m=>m.id===aId?{...m,content:`Lo siento, hubo un problema: ${err.message}. Reintentá.`}:m)}));
     } finally {
       setLoading(false);
     }
