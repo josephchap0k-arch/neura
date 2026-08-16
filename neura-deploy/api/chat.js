@@ -437,3 +437,4 @@ La primera linea debe aportar valor, no ser una pregunta.
     if (!res.headersSent) res.status(500).json({ error: e.message, provider: prov?.name });
   }
 };
+ 
