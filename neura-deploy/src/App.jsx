@@ -390,7 +390,7 @@ function InstallBanner({ onDismiss }) {
       {!step
         ? <>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-              <span style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>Ten├® Neura siempre a mano</span>
+              <span style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>Tené Neura siempre a mano</span>
               <button onClick={onDismiss} style={{color:T.textTert,cursor:"pointer",display:"flex"}}><Icon.X/></button>
             </div>
             <p style={{fontSize:12,color:T.textSec,marginBottom:12}}>Agregala a tu pantalla de inicio y usala como una app.</p>
