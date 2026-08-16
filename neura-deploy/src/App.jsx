@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 // ÔöÇÔöÇÔöÇ DESIGN TOKENS ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const T = {
@@ -18,7 +18,7 @@ const T = {
 
 // ÔöÇÔöÇÔöÇ PROVIDERS CONFIG ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const PROVIDERS = [
-  { id:"auto",     label:"Ô£¿ Autom├ítico",  sub:"NEURA elige",     enabled: true  },
+  { id:"auto",     label:"✨ Automático",  sub:"NEURA elige",     enabled: true  },
   { id:"claude",   label:"Claude",         sub:"Anthropic",       enabled: true  },
   { id:"gpt",      label:"GPT",            sub:"OpenAI",          enabled: false },
   { id:"gemini",   label:"Gemini",         sub:"Google",          enabled: false },
@@ -32,7 +32,7 @@ const CONV_KEY = "neura-conversations-v1";
 const getConvs = () => { try { return JSON.parse(localStorage.getItem(CONV_KEY)||"[]"); } catch { return []; } };
 const saveConvs = (list) => { try { localStorage.setItem(CONV_KEY, JSON.stringify(list.slice(0,100))); } catch {} };
 const mkId = () => Math.random().toString(36).slice(2)+Date.now().toString(36);
-const mkTitle = (text) => text.slice(0,50).trim()||"Nueva conversaci├│n";
+const mkTitle = (text) => text.slice(0,50).trim()||"Nueva conversación";
 
 // ÔöÇÔöÇÔöÇ MARKDOWN RENDERER (minimal) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function renderMarkdown(text) {
@@ -78,13 +78,13 @@ function NeuraLogo({ size=28 }) {
 
 // ÔöÇÔöÇÔöÇ MODEL CHIPS ÔÇö visible horizontal selector ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const PROVIDER_INFO = {
-  auto:     "Neura elige por vos la IA m├ís adecuada para cada pedido.",
-  claude:   "Usar Claude para esta conversaci├│n.",
-  gpt:      "Usar GPT para esta conversaci├│n.",
-  gemini:   "Usar Gemini para esta conversaci├│n.",
-  grok:     "Usar Grok para esta conversaci├│n.",
-  deepseek: "Usar DeepSeek para esta conversaci├│n.",
-  kimi:     "Usar Kimi para esta conversaci├│n.",
+  auto:     "Neura elige por vos la IA más adecuada para cada pedido.",
+  claude:   "Usar Claude para esta conversación.",
+  gpt:      "Usar GPT para esta conversación.",
+  gemini:   "Usar Gemini para esta conversación.",
+  grok:     "Usar Grok para esta conversación.",
+  deepseek: "Usar DeepSeek para esta conversación.",
+  kimi:     "Usar Kimi para esta conversación.",
 };
 
 function ModelChips({ value, onChange }) {
@@ -120,15 +120,15 @@ function ModelChips({ value, onChange }) {
                 fontWeight: sel?500:400,
               }}
             >
-              {p.id==="auto"&&<span style={{fontSize:11}}>Ô£¿</span>}
-              <span>{p.id==="auto"?"Autom├ítico":p.label}</span>
+              {p.id==="auto"&&<span style={{fontSize:11}}>✨</span>}
+              <span>{p.id==="auto"?"Automático":p.label}</span>
             </button>
           );
         })}
       </div>
       {/* Active model tooltip */}
       <div style={{marginTop:6,fontSize:11,color:T.textTert,minHeight:14,transition:"opacity .15s",opacity:tooltip?1:.6}}>
-        {tooltip ? PROVIDER_INFO[tooltip] : (value==="auto" ? "Neura elige por vos la IA m├ís adecuada." : `Usando ${PROVIDERS.find(p=>p.id===value)?.label||value} para esta conversaci├│n.`)}
+        {tooltip ? PROVIDER_INFO[tooltip] : (value==="auto" ? "Neura elige por vos la IA más adecuada." : `Usando ${PROVIDERS.find(p=>p.id===value)?.label||value} para esta conversación.`)}
       </div>
     </div>
   );
@@ -146,7 +146,7 @@ function VoiceButton({ onTranscript, size="lg" }) {
 
   const toggle = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert("Tu navegador no soporta reconocimiento de voz. Prob├í Chrome."); return; }
+    if (!SR) { alert("Tu navegador no soporta reconocimiento de voz. Probá Chrome."); return; }
     if (state === "listening") {
       recogRef.current?.stop();
       setState("idle");
@@ -186,7 +186,7 @@ function VoiceButton({ onTranscript, size="lg" }) {
         <Icon.Mic/>
       </button>
       {isLg&&<span style={{fontSize:12,color:T.textTert,fontWeight:400}}>
-        {state==="idle"?"Habl├í con Neura":state==="listening"?"Te escuchoÔÇª":state==="transcribing"?"EntendiendoÔÇª":"Intente de nuevo"}
+        {state==="idle"?"Hablá con Neura":state==="listening"?"Te escucho…":state==="transcribing"?"Entendiendo…":"Intente de nuevo"}
       </span>}
     </div>
   );
@@ -248,7 +248,7 @@ function Composer({ onSend, isLoading, model, onModelChange }) {
       <div style={{maxWidth:720,margin:"0 auto"}}>
         <div style={{display:"flex",alignItems:"flex-end",gap:0,background:T.bg,border:`1.5px solid ${focused?T.borderFocus:T.border}`,borderRadius:14,transition:"border-color .15s",padding:"10px 10px 10px 14px"}}>
           <textarea ref={textRef} value={text} onChange={onInput} onKeyDown={onKey} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
-            placeholder="Escrib├¡ lo que necesit├ísÔÇª" rows={1}
+            placeholder="Escribí lo que necesitás…" rows={1}
             style={{flex:1,background:"transparent",border:"none",resize:"none",color:T.textPrimary,fontSize:15,lineHeight:1.55,outline:"none",maxHeight:140,overflowY:"auto",fontFamily:"inherit",padding:0}}
           />
           <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,paddingLeft:8}}>
@@ -269,7 +269,7 @@ function Composer({ onSend, isLoading, model, onModelChange }) {
 
 // ÔöÇÔöÇÔöÇ HOME EMPTY STATE ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function HomeEmpty({ onSend, model, onModelChange }) {
-  const CHIPS = ["Necesito una idea de negocio","Redact├í un email profesional","Explicame algo complejo","Ayudame a organizar un proyecto"];
+  const CHIPS = ["Necesito una idea de negocio","Redactá un email profesional","Explicame algo complejo","Ayudame a organizar un proyecto"];
   const [focused, setFocused] = useState(false);
   const [text, setText] = useState("");
   const [voiceState, setVoiceState] = useState("idle");
@@ -286,7 +286,7 @@ function HomeEmpty({ onSend, model, onModelChange }) {
         <NeuraLogo size={48}/>
         <div style={{textAlign:"center"}}>
           <h1 style={{fontSize:28,fontWeight:700,color:T.textPrimary,letterSpacing:".08em",margin:0}}>NEURA</h1>
-          <p style={{fontSize:15,color:T.textSec,margin:"6px 0 0",fontWeight:400}}>┬┐Qu├® necesit├ís?</p>
+          <p style={{fontSize:15,color:T.textSec,margin:"6px 0 0",fontWeight:400}}>¿Qué necesitás?</p>
         </div>
       </div>
 
@@ -299,7 +299,7 @@ function HomeEmpty({ onSend, model, onModelChange }) {
       <div style={{width:"100%",maxWidth:560,marginBottom:16}}>
         <div style={{background:T.bg,border:`1.5px solid ${focused?T.borderFocus:T.border}`,borderRadius:14,padding:"10px 10px 10px 14px",display:"flex",alignItems:"flex-end",gap:8,transition:"border-color .15s"}}>
           <textarea ref={textRef} value={text} onChange={onInput} onKeyDown={onKey} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
-            placeholder="o escrib├¡ lo que necesit├ísÔÇª" rows={1}
+            placeholder="o escribí lo que necesitás…" rows={1}
             style={{flex:1,background:"transparent",border:"none",resize:"none",color:T.textPrimary,fontSize:15,lineHeight:1.55,outline:"none",maxHeight:120,fontFamily:"inherit",padding:0}}
           />
           <button onClick={send} disabled={!text.trim()} style={{width:36,height:36,borderRadius:10,background:text.trim()?T.accent:"#E5E7EB",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:text.trim()?"pointer":"default",color:"white",transition:"all .15s",flexShrink:0}}>
@@ -362,7 +362,7 @@ function Sidebar({ convs, activeId, onNew, onSelect, onDelete, onClose, isMobile
             {items.map(c=>(
               <div key={c.id} style={{display:"flex",alignItems:"center",gap:1,borderRadius:8,background:activeId===c.id?"#F5F3FF":"transparent",marginBottom:1}} onMouseEnter={e=>{if(activeId!==c.id)e.currentTarget.style.background=T.bgSubtle;}} onMouseLeave={e=>{if(activeId!==c.id)e.currentTarget.style.background="transparent";}}>
                 <button onClick={()=>onSelect(c.id)} style={{flex:1,textAlign:"left",padding:"7px 8px",borderRadius:8,color:activeId===c.id?T.accent:T.textSec,fontSize:13,cursor:"pointer",background:"transparent",border:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontFamily:"inherit",fontWeight:activeId===c.id?500:400}}>
-                  {c.title||"Sin t├¡tulo"}
+                  {c.title||"Sin título"}
                 </button>
                 <button onClick={e=>{e.stopPropagation();onDelete(c.id);}} style={{flexShrink:0,padding:"6px",color:T.textTert,background:"transparent",border:"none",cursor:"pointer",borderRadius:6,display:"none"}} className="del-btn" onMouseEnter={e=>e.currentTarget.style.color="#EF4444"} onMouseLeave={e=>e.currentTarget.style.color=T.textTert}>
                   <Icon.Trash/>
@@ -371,7 +371,7 @@ function Sidebar({ convs, activeId, onNew, onSelect, onDelete, onClose, isMobile
             ))}
           </div>
         ))}
-        {convs.length===0&&<div style={{padding:"20px 8px",textAlign:"center",fontSize:12,color:T.textTert,lineHeight:1.6}}>Tus conversaciones aparecer├ín ac├í</div>}
+        {convs.length===0&&<div style={{padding:"20px 8px",textAlign:"center",fontSize:12,color:T.textTert,lineHeight:1.6}}>Tus conversaciones aparecerán acá</div>}
       </div>
 
       {/* Footer */}
@@ -394,14 +394,14 @@ function InstallBanner({ onDismiss }) {
               <button onClick={onDismiss} style={{color:T.textTert,cursor:"pointer",display:"flex"}}><Icon.X/></button>
             </div>
             <p style={{fontSize:12,color:T.textSec,marginBottom:12}}>Agregala a tu pantalla de inicio y usala como una app.</p>
-            <button onClick={()=>setStep("ios")} style={{width:"100%",padding:"9px",borderRadius:9,background:T.accent,border:"none",color:"white",fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>Ver c├│mo instalar</button>
+            <button onClick={()=>setStep("ios")} style={{width:"100%",padding:"9px",borderRadius:9,background:T.accent,border:"none",color:"white",fontSize:13,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>Ver cómo instalar</button>
           </>
         : <>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-              <span style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>Instal├í NEURA</span>
+              <span style={{fontSize:13,fontWeight:600,color:T.textPrimary}}>Instalá NEURA</span>
               <button onClick={onDismiss} style={{color:T.textTert,cursor:"pointer",display:"flex"}}><Icon.X/></button>
             </div>
-            {["1. Toc├í el bot├│n Compartir (cuadrado con flecha)","2. Eleg├¡ ┬½A├▒adir a pantalla de inicio┬╗","3. Toc├í Agregar"].map((s,i)=>(
+            {["1. Tocá el botón Compartir (cuadrado con flecha)","2. Elegí ┬½Añadir a pantalla de inicio┬╗","3. Tocá Agregar"].map((s,i)=>(
               <div key={i} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
                 <div style={{width:22,height:22,borderRadius:"50%",background:T.accentSoft,color:T.accent,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
                 <span style={{fontSize:12,color:T.textSec,lineHeight:1.5}}>{s.slice(3)}</span>
@@ -552,7 +552,7 @@ export default function App() {
           } catch {}
         }
       }
-      if (!reply) throw new Error("Respuesta vac├¡a");
+      if (!reply) throw new Error("Respuesta vacía");
     } catch (err) {
       updateConv(convId, c=>({...c,messages:c.messages.map(m=>m.id===aId?{...m,content:`Lo siento, hubo un problema: ${err.message}. Reintent├í.`}:m)}));
     } finally {
