@@ -8,11 +8,11 @@
 function buildSystemString(core, strategy) {
   const parts = [
     core.identity,
-    core.principles.join(' '),
+    (Array.isArray(core.principles) ? core.principles.join(' ') : core.principles || ''),
     core.tone,
-    core.restrictions.join(' '),
+    (Array.isArray(core.restrictions) ? core.restrictions.join(' ') : core.restrictions || ''),
     // identity_guard.framing siempre presente — es parte del Core efectivo
-    core.identity_guard.framing,
+    (core.identity_guard && core.identity_guard.framing ? core.identity_guard.framing : ''),
   ];
   if (strategy && strategy.trim()) parts.push(strategy.trim());
   return parts.filter(Boolean).join('\n\n');
