@@ -54,9 +54,7 @@ module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control","no-cache,no-transform");
     res.setHeader("X-Provider",prov.name);
     const ws=txt.split(" ");
-    for(let i=0;i<ws.length;i+=4){const c=ws.slice(i,i+4).join(" ")+(i+4<ws.length?" ":"");res.write("data: "+JSON.stringify({type:"content_block_delta",delta:{type:"text_delta",text:c}})+"
-
-");}
+    for(let i=0;i<ws.length;i+=4){const c=ws.slice(i,i+4).join(" ")+(i+4<ws.length?" ":"");res.write("data: "+JSON.stringify({type:"content_block_delta",delta:{type:"text_delta",text:c}})+"\n\n");}
     res.write("data: [DONE]
 
 ");res.end();
